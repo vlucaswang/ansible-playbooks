@@ -1,0 +1,1331 @@
+#!/bin/sh 
+#----------------------------------------------------------------------------------------
+# Copyright (C) 2008-2011 by EMC Corporation 
+# All rights reserved.
+#----------------------------------------------------------------------------------------
+#
+# Author	: EMC Corporation
+#
+# Source File for EMCGrab
+#
+# Script Wide Variables
+
+OS=`uname -s`
+HOSTNAME=`hostname`
+SCRIPTS=${HOME}/tools
+AWK=${SCRIPTS}/awk
+BIN=${SCRIPTS}/bin
+LOCK=${HOME}/.lock_${HOSTNAME}
+PID=$$
+DELETE=ON
+BACKUP=OFF
+HEAT=OFF
+INQ_MODE=0
+TRACE=${HOME}/emcgrab_trace.txt
+DBG=1
+
+EMC_TMP=${HOME}/tmp_${HOSTNAME}_${PID}
+
+# MG: MODIFY: GERS_480 - Below line commented as output directory is given as an optional command line parameter
+#OUT_DIR=${HOME}/outputs
+
+RPT="${EMC_TMP}/emcgrab.`date +%d%m%y-%H%M`.txt"
+ERR_RPT="${EMC_TMP}/error_report.txt"
+DEFAULT_VALUE="No Information Supplied"
+PARTY_NUMBER=""
+CUSTOMER_ID=""
+CONTACT_ID=""
+CONTACTPHONE_ID=""
+EMAIL_ID=""
+
+LANG=C
+LC_ALL=C
+#
+# Determine OS release
+#
+
+if [ ${OS} = "AIX" ]
+then
+	OS_VER=`oslevel | cut -c1-3`
+else
+	OS_VER=`uname -r`
+fi
+
+#
+# Read in customer information from file customer.profile
+#
+
+if [ -f ${HOME}/customer.profile ]
+then
+	# Source in the customer configuration information
+	. $HOME/customer.profile
+fi
+
+#
+# Read in version information from file version.sh
+#
+
+if [ -f ${HOME}/version.sh ]
+then
+	# Source in the version number
+	. $HOME/version.sh
+else
+	VERSION="NOT_FOUND"
+	export VERSION		
+fi
+
+EMC_PATH=/etc:.
+
+PATH=${PATH}:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/ucb:${EMC_PATH}:${SCRIPTS}:${BIN}
+
+export PATH
+
+USER=`whoami`
+
+#
+# Operating Specific Paths
+#
+
+if [ ${OS} = "SunOS" ]
+then
+	PATH=${PATH}:/usr/platform/`uname -m`/sbin
+
+elif [ ${OS} = "HP-UX" ]
+then
+	PATH=${PATH}:/opt/fcms/bin
+fi
+
+#
+# Check path for gzip.  If found, test operational status
+# If successful, use gzip, otherwise default to compress
+#
+
+
+MAN_CMD=gzip
+CMD_EXIST=`which ${MAN_CMD} 2>&1 | awk -f ${AWK}/check_exe.awk`
+
+if [ ${CMD_EXIST} -eq 1 ]
+then
+	gzip -h > /dev/null 2>&1
+	if [ $? -eq 0 ]
+	then
+		COMPRESS=gzip
+		UNCOMPRESS="gzip -d"
+		TAR_SUFFIX="gz"
+	else
+		COMPRESS=compress
+		UNCOMPRESS=uncompress
+		TAR_SUFFIX=Z
+	fi
+else
+	COMPRESS=compress
+	UNCOMPRESS=uncompress
+	TAR_SUFFIX=Z
+fi
+
+#
+# List of variables which need to be passed up the food chain
+# to any 3rd party script
+#
+
+# MG: MODIFY: GERS_480 - OUT_DIR removed from the list
+#VARIABLES="RC RPT TAR_FILE TAR_SUFFIX OUT_DIR EMC_TMP"
+VARIABLES="RC RPT TAR_FILE TAR_SUFFIX EMC_TMP"
+
+
+CUST_VARS="CUSTOMER_ID CONTACT_ID CONTACTPHONE_ID EMAIL_ID CFG_FILE"
+
+#
+# Export global variables
+#
+
+# MG: MODIFY: GERS_480 - OUT_DIR variable removed from the list of variables to be exported
+
+#export HOSTNAME EMC_PATH EMC_TMP HOME SCRIPTS OS CMD_DIR FILE_DIR RPT \
+#	ERR_RPT AWK BIN USER BOM_FILE AUTOEXEC COMPRESS TAR_FILE TAR_SUFFIX \
+#	UNCOMPRESS HEAT BACKUP OS_VER VARIABLES OUT_DIR LOCK RC DBG \
+#	LANG LC_ALL INQ_MODE PARTY_NUMBER CUSTOMER_ID CONTACT_ID CONTACTPHONE_ID \
+#       EMAIL_ID CLARIFY_ID SRC_DIR CUST_VARS
+
+export HOSTNAME EMC_PATH EMC_TMP HOME SCRIPTS OS CMD_DIR FILE_DIR RPT \
+	ERR_RPT AWK BIN USER BOM_FILE AUTOEXEC COMPRESS TAR_FILE TAR_SUFFIX \
+	UNCOMPRESS HEAT BACKUP OS_VER VARIABLES LOCK RC DBG \
+	LANG LC_ALL INQ_MODE PARTY_NUMBER CUSTOMER_ID CONTACT_ID CONTACTPHONE_ID \
+        EMAIL_ID CLARIFY_ID SRC_DIR CUST_VARS OPT_VAR
+
+#
+# This source file contains the following functions.  A description of each is
+# provided with the function
+#
+# start
+# initialise
+# cleanup 
+# fs_check
+# usage
+# test_user
+# validity
+# check_emc
+# clarify
+# update_profile
+# party_number
+# cust_name
+# contact
+# phone
+# email
+# confirmation
+# confirmed
+# interact	
+# module
+# dump_variables_and_exit
+# check_for_installed_sw
+# check_for_intalled_sw_other
+# root_level_index
+# vmware_support
+#
+
+# Function : start
+# Description 	: Lock file management to enforce single instance operation
+#		: Provide clean environment prior to data collection
+start()
+{
+#
+# Validate lock file status
+#
+
+if [ -f ${LOCK} ]
+then
+	
+	# Validate whether EMCGrab process is actually running on this host
+	
+	PROC_ID=`cat ${LOCK} | cut -f2 -d":"`
+	ps -p ${PROC_ID} > /dev/null 2>&1
+	if [ $? -eq 0 ]
+	then
+		
+		# Check to see whether process is called EMCGrab
+		
+		PID_CMD=`ps -p ${PROC_ID} | tail -1 | awk '{ print $4 }' | cut -c1-7`
+		if [ ${PID_CMD} = "emcgrab" ]
+		then
+			clear
+			echo "EMCGrab process (${PROC_ID}) already running"
+			dump_variables_and_exit 3
+		else
+			rm -f ${LOCK}
+		fi
+	fi
+fi
+
+#
+# Create lock file for single instance operation per host
+# Format - <hostname>:<PID>:<date / time>
+#
+echo "${HOSTNAME}:${PID}:`date +%Y-%m-%d.%H.%M`" > ${LOCK}
+
+#
+# Clean up environment - in case previous operation was used with -nodelete
+#
+
+ls -d ${HOME}/tmp_${HOSTNAME}_[0-9]* > /dev/null 2>&1
+if [ $? -eq 0 ]
+then
+	for i in `ls -d ${HOME}/tmp_${HOSTNAME}_*`
+	do
+		rm -rf ${i} > /dev/null 2>&1
+		if [ $? -ne 0 ]
+		then
+			printf "\nError : Unable to delete temp directory - ${i}\n"
+			sleep 2
+		fi
+	done
+	rm -rf ${HOME}/CC*_${HOSTNAME}*
+	rm -rf Backup
+	rm -f ${HOME}/variables
+fi
+}
+################ End of start fuction #################
+
+#
+# Function : initialise
+# Description	: Set up INQ variables dependant 
+# on OS, version and cpu architecture
+#
+initialise()
+{
+
+# Extended Support to allow for additional functionality
+# INQ_MODE=0 - Enabled
+# INQ_MODE=1 - Disabled
+# 
+# Version 3.8 of EMCGrab contains Inquiry utility version 7.3-824 (6.4.0.0)
+# Only for Solaris, Linux, HPUX 11.x, OSF1, AIX > 4.3
+
+if [ ${OS} = "SunOS" ]
+then
+        ARCH=`isainfo -kv |cut -d" " -f1`
+        PROC=`isainfo -kv |cut -d" " -f2`
+        case ${ARCH} in
+        32-bit) INQ="inq.solar26";;
+        64-bit) if [ ${PROC} = "amd64" ]
+                then
+                    INQ="inq.solAMD64"
+                else
+                    INQ="inq.sol64"
+                fi;;
+        x86_64) INQ="inq_solarisx86_64";;
+        amd64) INQ="inq.solAMD64";;
+             *) INQ="inq.solar26";;
+        esac
+
+# Note : inq.hpux1020 is version 7.3-278, and is only maintained
+# for older configurations, and as such does not contain latest inq
+# functionality.
+
+elif [ ${OS} = "HP-UX" ]
+then
+	BITS=`getconf KERNEL_BITS`
+        ARCH=`uname -m`
+	if [ ${OS_VER} = "B.10.20" ]
+	then 
+		INQ="inq.hpux1020"
+        elif [ ${OS_VER} = "B.11.00" ]
+        then
+                INQ="inq.hpux1100"
+        else
+		if [ ${BITS} = "32" ]
+		then
+                	INQ="inq.hpux1100"
+			
+                elif [ ${ARCH} = "ia64" ]
+                then
+                        INQ="inq.HPUXIA64"
+                else
+                        INQ="inq.hpux64"
+                fi
+        fi
+
+elif [ ${OS} = "AIX" ]
+then
+#MG:MODIFY: GERS_417 - "bootinfo -y" changed to "bootinfo -K" for getting the kernel loaded in memory
+	ARCH=`bootinfo -K`
+	case ${OS_VER} in
+	5.?) if [ ${ARCH} = "64" ]
+	     then
+		 INQ="inq.aix64_51" 
+	     else
+		INQ="inq.aix32_51"
+	     fi
+		;;
+	4.3) if [ ${ARCH} = "64" ]
+	     then
+	        INQ="inq.aix64_43" 
+	     else
+	        INQ="inq.aix43"
+	     fi
+	     ;;
+	esac
+
+elif [ ${OS} = "OSF1" ]
+then
+	INQ="inq.osf1" 
+
+elif [ ${OS} = "Linux" ]
+then
+	ARCH=`uname -m`
+	case ${ARCH} in
+	x86_64) INQ="inq.LinuxAMD64";;
+	  ia64) INQ="inq.LinuxIA64";;
+	     *) INQ="inq.linux";;
+	esac
+
+# Note : inq.irix is version 7.3-255, and is only maintained
+# for older configurations, and as such does not contain latest inq
+# functionality
+
+elif [ ${OS} = "IRIX64" -o ${OS} = "IRIX" ]
+then
+	INQ="inq.irix"
+	INQ_MODE=1
+fi
+
+export INQ
+
+if [ -f ${BIN}/${INQ}.Z ]
+then
+	${UNCOMPRESS} -f ${BIN}/${INQ}.Z
+	if [ $? -ne 0 ]
+	then
+		printf "\nUnable to uncompress ${BIN}/${INQ}.Z using ${UNCOMPRESS}....continuing script" | tee -a ${RPT}
+	fi
+fi
+
+
+}
+################ End of initialize function #######################
+
+#
+# Function : cleanup
+# Description	: Tidy up on exit or user cancellation.  
+#		: Can also be invoked with ./emcgrab.sh -cleanup
+#
+cleanup()
+{
+if [ ${DELETE} = "ON" ]
+then
+	printf "Removing Temporary Files....\n"
+	for i in `ls -d ${HOME}/tmp_${HOSTNAME}_*`
+	do
+		rm -rf ${i} > /dev/null 2>&1
+		if [ $? -ne 0 ]
+		then
+			printf "\nError : Unable to delete temp directory - ${i}\n"
+			printf "\nPlease delete the contents of ${i} manually\n"
+		fi
+	done
+	rm -rf ${EMC_TMP}/ > /dev/null 2>&1
+	rm -rf ${SRC_DIR} > /dev/null 2>&1
+	rm -rf ${HOME}/CC*_${HOSTNAME}* > /dev/null 2>&1
+	rm -f ${HOME}/variables > /dev/null 2>&1
+	rm -f ${LOCK} > /dev/null 2>&1
+	sleep 2
+fi
+}
+################ End of cleanup function #######################
+
+#
+# Function : fs_check
+# Description	: Check remaining capacity on file system before running
+#		: each module.  Will WARN with less than 25Mb
+#		: May fail depending on size of logical volume name / NFS 
+#		: mount point, forcing size onto a new line
+#
+fs_check()
+{
+if [ ${OS} = "SunOS" ]
+then
+        FS=`df -k . | tail -1 | awk '{ print $4 }'`
+	FSB=`echo $FS | sed 's/^.*%/percent/'`
+	if [ ${FSB} = "percent" ]
+	then
+		FS=`df -k . | tail -1 | awk '{print $3}'`
+	fi
+
+else
+        FS=`df -kP . | tail -1 | awk '{ print $4 }'`
+fi
+
+
+if [ ${FS} -lt 25000 ]
+then
+ if [ ${AUTOEXEC} -eq 0 ]
+        then
+                echo "\nHave detected less then 25M available in directory ${HOME}...Aborting rest of script\n" | tee -a ${RPT}
+
+                # Save log file for debugging
+                cp ${RPT} ${HOME}
+
+                cleanup
+                dump_variables_and_exit 4
+        else
+
+cat <<ENDWarning | tee -a ${RPT}
+
+******************************* WARNING *******************************
+
+  Could not detect at least 25MB available in directory ${HOME}
+  Detected space remaining is: ${FS}K
+  Running this script could fill your file system if there is not
+  enough space.
+
+  We recommend that you quit this run and install this utility on a
+  file system with at least 500 MB of space to handle any temporary
+  files that may be created.....
+	
+***********************************************************************
+
+ENDWarning
+
+        printf "Do you wish to CONTINUE (C/c)or QUIT (Q/q)? : --> "
+
+        while read ret
+	do
+		case ${ret} in
+		C|c) echo "Continuing per customer....." | tee -a ${RPT}
+		     break;;
+		Q|q) echo "Exiting....." | tee -a ${RPT}
+	             # Save log file for debugging
+        	     cp ${RPT} ${HOME}/outputs
+	             cleanup
+       		     dump_variables_and_exit 4
+		     break;;
+		  *) echo "Please answer (C/c) or (Q/q) : \c";;
+		esac
+       
+        done
+fi
+fi
+}
+################ End of fs_check function #######################
+
+#
+# Function : usage
+# Description	: Displays Usage Screen
+#
+usage()
+{
+printf "\nUsage : $0 [-h] [-v] [-o module,module] [-ip] [-symmid prompt,bypass] [-OUTDir new_output_directory] [-vxdmpdebug] [a.b.c.d,w.x.y.z] [-autoexec] [-quiet] [-backup]"
+printf "\n\t-h\t : Displays this help screen"
+printf "\n\t-v\t : Displays version information"
+printf "\n\t-o\t : Comma separated list of options -"
+printf "\n\t\t : dru - EMC Open Migrator/LM (DRU)"
+printf "\n\t\t : erm - EMC Replication Manager"
+printf "\n\t\t : ift - EMC Infomover File Transfer"
+printf "\n\t\t : ifs - EMC Infomover File System"
+printf "\n\t\t : im - EMC Infomover File Transfer & Infomover File System"
+printf "\n\t\t : vxvm - Veritas Volume Manager"
+printf "\n\t\t : ppvm - PowerPath Volume Manager (PPVM)"
+printf "\n\t\t : hacmp - AIX HACMP Cluster"
+printf "\n\t\t : ecc - EMC Control Center"
+printf "\n\t\t : vcs - Veritas Cluster Server"
+printf "\n\t\t : sc - Sun Cluster 3.x"
+printf "\n\t\t : sg - HP/UX ServiceGuard"
+printf "\n\t\t : sdmm - Symmetrix Data Mobility Manager"
+printf "\n\t\t : clariion - Clariion Storage Arrays (use with -clariionIP if required)"
+printf "\n\t\t : rp - Recovery Point" 
+printf "\n\t-symmid  : prompt|bypass - Solutions Enabler prompt for Symmetrix S/N or bypass"
+printf "\n\t\t : prompt - Select 'prompt' to select each Symmetrix"
+printf "\n\t\t : bypass - Select 'bypass' for no data collection of Symmetrix"
+printf "\n\t-OUTDir\t : Pathname of new_output_directory"
+printf "\n\t-vxdmpdebug : Runs vxdmpdebug script with 'Y' option enabled" 
+printf "\n\t-backup\t : Take a snapshot of the system environment"
+printf "\n\t-quiet\t : Suppress all status messages" 
+printf "\n\t-autoexec\t : Automatic, no user prompts"
+printf "\n\t-ip\t : Comma seperated list of IP addresses for SP interfaces"
+printf "\n\t\t : Only required for FC4700 / CX Series Arrays"
+printf "\n\n"
+}
+################ End of usage function #######################
+ 
+
+#
+# Function : testuser
+# Description	: Check that script is being run as root, and allow over-ride
+#		: Not used, if running in autoexec mode
+#
+testuser()
+{
+if [ ! "${USER}" = "root" ]
+	then
+	clear
+	printf "\nThis script needs to be run as root"
+	printf "\nIf you wish to proceed as '${USER}'"
+	printf "\nPlease re-enter the user-id : "
+	read RESPONSE 
+	LC_RESPONSE=`echo ${RESPONSE} | tr "[:upper:]" "[:lower:]"`
+	if [ "${RESPONSE}" = "${USER}" -o "${LC_RESPONSE}" = "${USER}" ]
+		then
+		echo "** WARNING ** Script not run as root" >> ${RPT}
+		break 
+	else
+		printf "\nUser names did not match, exiting"
+		dump_variables_and_exit 6
+	fi
+fi
+}
+################ End of testuser function #######################
+
+#
+# Function : validity
+# Description	: Check to ensure that all required directories are present
+#		: to ensure clean installation.
+#		: Update history file when not running in autoexec mode
+#
+validity()
+{
+#
+# Check to ensure existance of critical components
+#
+DEPENDENCIES="${SCRIPTS} ${AWK}"
+for DIR in ${DEPENDENCIES}
+do
+	if [ ! -d ${DIR} ]
+	then
+		clear
+		echo "Not all components are installed....."
+		echo "Please extract the entire tar file....exiting"
+		dump_variables_and_exit 7
+	fi
+done
+
+#
+# Update history file on usage / upgrade information
+#
+if [ ! -f $HOME/History ]
+	then
+	more $HOME/README
+	clear
+	INST_DATE=`date +"%d/%m/%Y"`
+	printf "Install date\t : $INST_DATE" > $HOME/History
+	printf "\nRelease Version\t : $VERSION" >> $HOME/History
+else 
+	VER=`grep "Version" $HOME/History | awk '{ print $4 }' | tail -1`
+	if [ ! $VERSION = $VER ]
+		then
+		UPD_DATE=`date +"%d/%m/%Y"`
+		printf "\nSoftware Update\t : `date +\"%d/%m/%Y\"`" >> $HOME/History
+		printf "\nRelease Version\t : $VERSION" >> $HOME/History
+		more $HOME/README
+		clear
+	fi
+	RUN_DATE=`date +"%d/%m/%Y %H:%M"`
+	printf "\nScript run at\t : $RUN_DATE" >> $HOME/History
+fi
+}
+################ End of validity function #######################
+
+#
+# Function : check_emc
+# Description 	: Check for /usr/emc, otherwise prompt.
+#		: Primarily used for determination where VL is installed
+#		: Not used when running in autoexec mode
+#
+check_emc()
+{
+if [ -d "/home/spender/sysgrab" ]
+	then
+	EMC_DIR="/home/spender/sysgrab"
+	export EMC_DIR
+else
+	echo "Directory /usr/emc not found" 
+	printf "Please enter full path to emc directory, if installed : "
+	read EMC_REPLY
+	if [ -n "$EMC_REPLY" ]
+		then
+		DIR=`basename $EMC_REPLY`
+		if [ $DIR = "emc" ]
+			then
+			EMC_DIR="$EMC_REPLY"
+		else
+			EMC_DIR="$EMC_REPLY/emc"
+		fi
+	fi
+fi
+PATH=$PATH:$EMC_DIR:$EMC_DIR/VolumeLogix
+export PATH
+clear
+}
+################ End of check_emc function #######################
+
+#
+# Function : clarify
+# Description	: Enter Clarify Case Number
+#
+clarify()
+{
+CLARIFY_ID=$DEFAULT_VALUE
+#printf  "Please Enter Service Request Number\t: "
+#read CLARIFY_TEMPID
+CLARIFY_TEMPID="10001"
+
+if [ -n "$CLARIFY_TEMPID" ]
+then 
+	echo $CLARIFY_TEMPID | grep '[^1234567890]' > /dev/null 2>&1
+
+	if [ $? -eq 0 ]
+	then
+		echo "Please enter a numerical value"
+
+	else
+		CLARIFY_ID=$CLARIFY_TEMPID && CC_ID=$CLARIFY_TEMPID
+	fi
+else 
+	CC_ID=0000000000
+fi
+}
+################ End of clarify function #######################
+
+#
+# Function: update_profile
+# Description: Updates customer.profile file when a change is made
+#
+update_profile()
+{
+	echo "PARTY_NUMBER=\"$PARTY_NUMBER\"" >$HOME/customer.profile
+	echo "CUSTOMER_ID=\"$CUSTOMER_ID\"" >>$HOME/customer.profile
+	echo "CONTACT_ID=\"$CONTACT_ID\"" >> $HOME/customer.profile
+	echo "CONTACTPHONE_ID=\"$CONTACTPHONE_ID\"" >> $HOME/customer.profile
+	echo "EMAIL_ID=\"$EMAIL_ID\"" >> $HOME/customer.profile
+}
+################ End of update_profile function #######################
+
+#
+# Function : party_number
+# Description	: Enter Party Number 
+#
+party_number()
+{
+
+
+if [ -z "$PARTY_NUMBER" ]
+then
+
+printf  "Please Enter Customer Party Number (Site ID) : "
+read NEW_PARTY_NUMBER
+
+fi
+
+if [ -n "$NEW_PARTY_NUMBER" ]
+then 
+
+	PARTY_NUMBER="$NEW_PARTY_NUMBER"
+	update_profile
+fi
+
+}
+################ End of party_number function #######################
+
+#
+# Function : cust_name
+# Description	: Enter Customer Name
+#
+cust_name()
+{
+
+
+if [ -z "$CUSTOMER_ID" ]
+then
+
+printf  "Please Enter Customer Company Name\t: "
+read NEW_CUSTOMER_ID
+
+fi
+
+if [ -n "$NEW_CUSTOMER_ID" ]
+then 
+
+	CUSTOMER_ID="$NEW_CUSTOMER_ID"
+	update_profile
+fi
+
+}
+################ End of cust_name function #######################
+
+# Function : contact
+# Description	: Enter Customer Contact Name
+#
+contact()
+{
+
+if [ -z "$CONTACT_ID" ]
+then
+ 
+printf  "Please Enter Customer Contact Name\t: "
+read NEW_CONTACT_ID
+
+fi
+
+if [ -n "$NEW_CONTACT_ID" ]
+then 
+	CONTACT_ID=$NEW_CONTACT_ID
+	update_profile
+fi
+}
+################ End of contact function #######################
+
+#
+# Function : phone
+# Description	: Enter Customer Contact's Phone Number
+#
+phone()
+{
+
+if [ -z "$CONTACTPHONE_ID" ]
+then
+	printf  "Please Enter Customer Contact Phone Number\t: "
+	read NEW_CONTACTPHONE_ID
+fi
+
+if [ -n "$NEW_CONTACTPHONE_ID" ]
+then 
+	CONTACTPHONE_ID=$NEW_CONTACTPHONE_ID
+	update_profile
+fi
+
+}
+################ End of phone function #######################
+
+#
+# Function : email
+# Description : Enter an email address
+#
+email()
+{
+
+if [ -z "$EMAIL_ID" ]
+then
+	printf "Please Enter your Email Address\t: "
+	read NEW_EMAIL_ID
+fi
+
+if [ -n "$NEW_EMAIL_ID" ]
+then 
+	EMAIL_ID=$NEW_EMAIL_ID
+	update_profile
+fi
+
+}
+################ End of email function #######################
+
+#
+# Function : confirmation
+# Description	: Provide verification on data entry
+#
+confirmation()
+{
+echo 
+echo "" 
+echo " EMC GRAB IDENTIFICATION INFORMATION  " 
+echo " -----------------------------------  " 
+echo " 1) Service Request Number:             " ${CLARIFY_ID} 
+echo
+echo " 2) Customer Party Number:           " ${PARTY_NUMBER} 
+echo
+echo " 3) Customer Company Name:           " ${CUSTOMER_ID} 
+echo " 4) Customer Contact Name:           " ${CONTACT_ID} 
+echo " 5) Customer Phone Number:           " ${CONTACTPHONE_ID} 
+echo " 6) Customer Email Address:          " ${EMAIL_ID} 
+echo
+echo " Hostname / OS Info:                 " ${HOSTNAME} /  ${OS} 
+}
+################ End of confirmation function #######################
+
+#
+# Function : confirmed
+# Description	: Provide verification on data entry
+#
+confirmed()
+{
+echo >> ${RPT}
+echo "" | tee -a ${RPT}
+echo " EMC GRAB IDENTIFICATION INFORMATION  " | tee -a ${RPT}
+echo " -----------------------------------  " | tee -a ${RPT}
+echo " 1) Service Request Number:           " ${CLARIFY_ID} | tee -a ${RPT}
+echo
+echo " 2) Customer Party Number (Site ID):  " ${PARTY_NUMBER} | tee -a ${RPT}
+echo
+echo " 3) Customer Company Name:            " ${CUSTOMER_ID} | tee -a ${RPT}
+echo " 4) Customer Contact Name:            " ${CONTACT_ID} | tee -a ${RPT}
+echo " 5) Customer Phone Number:            " ${CONTACTPHONE_ID} | tee -a ${RPT}
+echo " 6) Customer Email Address:           " ${EMAIL_ID} | tee -a ${RPT}
+echo
+echo " Hostname / OS Info:                  " ${HOSTNAME} /  ${OS} | tee -a ${RPT}
+}
+################ End of confirmed function #######################
+
+#
+# Function : interact
+# Description	: Uses other functions to interact with end user
+#
+interact()
+{
+clear
+
+# Perform some sanity checking
+# - Check for /usr/emc directory
+# - Run as user root
+# - Log installation and run report
+
+validity
+check_emc
+testuser
+
+# Query customer for information
+
+while [ -z "${CC_ID}" ]
+do
+	clarify
+done
+
+party_number
+cust_name
+contact
+phone
+email
+
+while [ -z "${VERIFIED_INPUT}" ]
+do
+	clear
+	confirmation
+	echo ""
+	#printf "Is the EMC Grab Identification Information Correct (Y/N)\t: "
+	#read RESPONSE in
+	RESPONSE="Y"
+
+	if [ "${RESPONSE}" = "Y" -o "${RESPONSE}" = "y" ]
+	then 
+		VERIFIED_INPUT="good_input"
+		cp ${HOME}/customer.profile ${EMC_TMP}/customer.profile
+		clear
+		confirmed
+
+	elif [ "${RESPONSE}" = "N" -o "${RESPONSE}" = "n" ]
+	then
+		printf "Please select the line you wish to modify (1-6,[q]uit emcgrab)\t: "
+		read LINE
+		case ${LINE} in
+			1) CC_ID=""; clarify;;
+			2) PARTY_NUMBER=""; party_number ;;
+			3) CUSTOMER_ID=""; cust_name ;;
+			4) CONTACT_ID=""; contact ;;
+			5) CONTACTPHONE_ID=""; phone ;;
+			6) EMAIL_ID=""; email ;;
+			Q|q) cleanup; exit 0 ;;
+		esac
+
+	else
+		printf "\nPlease answer (Y/N) "
+		sleep 2
+	fi
+done
+
+}
+################## End of interact function #######################
+
+# EMCGrab Module Names
+# ${OS}	- Collects platform specific information
+# erm   - EMC Replication Manager
+# ift   - Infomover File Transfer
+# ifs   - Infomover File System
+# im    - Infomover File Transfer/System
+# dru   - Open Migrator/LM (DRU)
+# se 	- Solutions Enabler
+# inq	- Inq
+# pp	- Powerpath
+# ecc	- ECC
+# vl	- Volume Logix
+# svm	- Solaris Volume Manager
+# vxvm	- Veritas Volume Manager
+# fz    - FibreZone
+# esnm2	- ESN Manager
+# sc	- Sun Cluster 3.x
+# vcs	- Veritas Cluster
+# sg	- HP-UX Service Guard
+# hacmp	- IBM AIX HACMP
+
+# 
+# Function : module
+# Description	: Set the default modules depending on OS type,
+#		: and whether lite is defined (HEAT=ON)
+#
+module()
+{
+DEFAULT_CMDS="${OS}"
+
+if [ ${HEAT} = "ON" ]
+then
+	if [ ${OS} = "SunOS" -o ${OS} = "AIX" -o ${OS} = "HP-UX" -o ${OS} = "Linux" -o ${OS} = "OSF1" ]
+	then
+
+		if [ ${OS} = "HP-UX" ]
+		then
+			HOST_LIST="${DEFAULT_CMDS} se lvm.${OS}"
+
+		elif [ ${OS} = "SunOS" ]
+		then
+			HOST_LIST="${DEFAULT_CMDS} se hbainfo"
+
+		elif [ ${OS} = "AIX" ]
+		then
+			HOST_LIST="${DEFAULT_CMDS} se"
+
+		elif [ ${OS} = "Linux" ]
+		then
+			HOST_LIST="${DEFAULT_CMDS} se pp lvm.${OS}"
+
+		else
+			# Capture OSF1 environments and force PP, being
+			# no automatic detection routines for OSF1
+			HOST_LIST="${DEFAULT_CMDS} pp se"
+
+		fi
+
+	else
+		echo
+		echo "The option '-lite' is not supported on this Operating System"
+		echo "Switching to running a full EMCGrab"
+		HEAT=OFF
+	fi
+fi
+
+if [ ${HEAT} = "OFF" ]
+then
+	#
+	#	Command List for SunOS / Solaris
+	#
+	if [ "$OS" = "SunOS" ]
+	then
+		HOST_LIST="${DEFAULT_CMDS} erm se svm hbainfo zfs"
+	#
+	#	Command List for AIX
+	#
+	elif [ ${OS} = "AIX" ] 
+	then
+		HOST_LIST="${DEFAULT_CMDS} erm se lvm.${OS}"
+	#
+	# 	Command List for HPUX
+	#
+	elif [ ${OS} = "HP-UX" ]
+	then
+		HOST_LIST="${DEFAULT_CMDS} erm se lvm.${OS}"
+	#
+	#	Command List for Tru64
+	#
+	elif [ ${OS} = "OSF1" ]
+	then
+		HOST_LIST="${DEFAULT_CMDS} se pp lvm.${OS}"
+	#
+	# 	Command List for Silicon Graphics IRIX
+	#
+	elif [ ${OS} = "IRIX64" -o ${OS} = "IRIX" ]
+	then
+		HOST_LIST="${DEFAULT_CMDS} se"
+	#
+	#	Command List for Redhat Linux
+	#
+	elif [ ${OS} = "Linux" ]
+	then
+		HOST_LIST="${DEFAULT_CMDS} erm se lvm.${OS}" 
+	#
+	#	Command List for Siemens Reliant Unix
+	#
+	elif [ ${OS} = "ReliantUNIX-Y" ]
+	then
+		HOST_LIST="${DEFAULT_CMDS}"
+	#
+	#	Default Command List for other OS
+	#
+	else 
+		HOST_LIST="${DEFAULT_CMDS}"
+	fi
+
+fi
+
+# Check for installed software
+# Pass $HEAT variable, so we don't detect software which is not required 
+# to generate a HEAT report
+check_for_installed_sw ${OS} ${HEAT}
+
+#
+# Add optional modules to CMD_LIST at the end of Host specific CMDS
+# SD:GERS_905 : adding networks to list
+#
+CMD_LIST="${HOST_LIST} ${MODULES} ${SW_LIST} networks inq"
+
+#
+# Eliminate duplicate modules from ${CMD_LIST}
+#
+CMD_LIST_TMP=""
+
+for i in ${CMD_LIST}
+do
+
+	DUPLICATE=0
+
+	# Perform duplicate module check
+	for j in ${CMD_LIST_TMP}
+	do
+
+		if [ "${j}" = "${i}" ]
+		then
+
+			# Command already exists in CMD_LIST_TMP
+			DUPLICATE=1
+		fi
+
+	done
+
+	# DUPLICATE=0	- No duplicate module detected
+	# DUPLIACTE=1	- Duplicate module detected - eliminating
+	if [ ${DUPLICATE} -eq 1 ]
+	then
+		printf "\nEliminating duplicate module ${i}" | tee -a ${RPT}
+
+	else
+		# First instance of the command detected
+		# Adding Command to list
+		CMD_LIST_TMP="${CMD_LIST_TMP} ${i}"
+
+	fi
+
+	# If module 'celerra' detected, modify command list to remove
+	# modules ${OS}, vl, se and clariion.  SE and Clariion will be called
+	# from within the celerra module dependant on storage detected.
+	# Being that celerra is an optional module, it will
+	# always appear after ${OS}
+	if [ ${i} = "celerra" ]
+	then
+		CMD_LIST_TMP=`echo ${CMD_LIST_TMP} | sed -e "s/${OS} //g" -e "s/vl //g" -e "s/se//g" -e "s/clariion//g"`
+	fi
+
+done
+
+# Command list with no duplicate modules
+CMD_LIST=${CMD_LIST_TMP}
+
+}
+################## End of module function #######################
+
+#
+# Function : dump_variables_and_exit
+# Description	: Take numeric exit code, dump variables for 3rd party
+#		: initiating scripts, and exit
+#
+dump_variables_and_exit()
+{
+RC=$1
+for var in ${VARIABLES}
+do
+	echo "${var}=`printenv ${var}`" >> ${HOME}/variables
+done
+exit ${RC}
+}
+################## End of dump_variables_and_exit function #######################
+
+#
+# Function : check_for_installed_sw
+# Description	: Check for installation of any software
+#		: which has been installed using native OS
+#		: installation utilities, ie pkgadd, swinstall
+#
+check_for_installed_sw()
+{
+# $1 is the name of the OS
+# $2 defines whether full or lite mode.  Don't want to collect additional software
+# such as cluster for lite operation.
+# To avoid any confusion invoke 'check_for_installed_sw ${OS}'
+
+if [ $1 = "SunOS" ]
+then
+	if [ ${2} = "ON" ]
+	then
+		# Restrict detection to just PowerPath and NAVICLI
+		PKG_NAME="EMCpower NAVICLI"
+		MOD_NAME="pp clariion"
+	else
+		PKG_NAME="SUNWscr VRTSvcs VRTSvxvm SUNWvxvm EMCpower EMCom NAVICLI EPCebsedm"
+		MOD_NAME="sc vcs vxvm vxvm pp dru clariion edm"
+	fi
+	
+	# Set the name of the command to query installed software		
+	PKG_CMD="pkginfo -q"
+
+elif [ $1 = "HP-UX" ]
+then
+	if [ ${2} = "ON" ]
+	then
+		PKG_NAME="EMCpower NAVICLI"
+		MOD_NAME="pp clariion"
+	else
+		PKG_NAME="EMCpower EMCom NAVICLI ServiceGuard VRTSvxvm VRTSvcs"
+		MOD_NAME="pp dru clariion sg vxvm vcs"
+	fi
+
+	# Set the name of the command to query installed software		
+	if [ `echo ${OS_VER} | cut -c3-4` -ge 11 ]
+	then
+		PKG_CMD=swlist
+	else
+		PKG_CMD=check_for_install_sw_other
+	fi
+
+elif [ $1 = "AIX" ]
+then
+	if [ ${2} = "ON" ]
+	then
+		PKG_NAME="EMCpower.base NAVICLI"
+		MOD_NAME="pp clariion"
+	else
+		PKG_NAME="cluster.base.server.rte cluster.es.server.rte \
+			  EMCpower.base EMCom.base NAVICLI VRTSvxvm VRTSvcs.rte"
+		MOD_NAME="hacmp hacmp pp dru clariion vxvm vcs"
+	fi
+
+	# Set the name of the command to query installed software		
+	if [ `echo ${OS_VER} | cut -c1` -ge 5 ]
+	then
+		PKG_CMD="lslpp -L"
+	else
+		PKG_CMD=check_for_installed_sw_other
+	fi
+
+elif [ $1 = "Linux" ]
+then
+	PKG_NAME="EMCpower naviagent VRTSvxvm VRTSvcs"
+	MOD_NAME="pp clariion vxvm vcs"
+	PKG_CMD=check_for_installed_sw_other
+fi
+
+CNT=0
+
+printf "\nConfiguring EMCGrab based on installed software : " | tee -a ${RPT}
+
+for i in ${PKG_NAME}
+do
+	CNT=`expr ${CNT} + 1`
+	${PKG_CMD} ${i} > /dev/null 2>&1
+
+	if [ $? -eq 0 ]
+	then
+		printf "\nAutomatically detected software : ${i}" | tee -a ${RPT}
+		MOD=`echo ${MOD_NAME} | cut -f ${CNT} -d " "`
+
+		SW_LIST="${SW_LIST} ${MOD}"
+
+	fi
+done
+
+printf "\n" | tee -a ${RPT}
+
+}
+################## End of check_for_installed_sw function #######################
+
+# Function : check_for_installed_sw_other
+# Description   : Specific handling to provide non zero exit codes
+#               : where PKG_CMD does not handle zon-zero return codes
+#		: or where specific parsing is required
+
+check_for_installed_sw_other()
+{
+if [ ${OS} = "AIX" ]
+then
+	RC=`lslpp -Lq $1 2>&1 | awk '{if (/not installed/) {res=1} else {res=0} } END {print res}'`
+
+elif [ ${OS} = "HP-UX" ]
+then
+	RC=`swlist $1 2>&1 | awk '{if ($1 ~ /WARNING:/) {res=1} else {res=0} } END {print res}'`
+
+elif [ ${OS} = "Linux" ]
+then
+	RC=`rpm -qa | grep $1 2>&1 | awk '{if (NF == 0) {res=1} else {res=0} } END {print res}'`
+
+fi
+
+if [ ${RC} -eq 0 ]
+then
+	return 0
+
+else
+	return 1
+
+fi
+}
+################## End of check_for_installed_sw_other function #######################
+
+# Function : root_level_index
+# Description   : Generate txt and html indexes on all files
+
+root_level_index()
+{
+cd ${SRC_DIR}
+
+FILE_LIST=`find [a-z]* -type f -print`
+
+printf "<TABLE>" >> ${EMC_TMP}/index.html
+
+for i in ${FILE_LIST}
+do
+	FILENAME=`basename ${i}`
+	DIRNAME=`dirname ${i}`
+
+	# Generate raw text file with '@" as field delimiter
+
+	printf "${FILENAME}@${DIRNAME}\n" >> ${EMC_TMP}/index.txt
+
+	# Generate an HTML table
+
+	printf "<TR>\n" >> ${EMC_TMP}/index.html
+	printf "<TD>File : <a href=${i}>${FILENAME}</a></TD>\n" >> ${EMC_TMP}/index.html
+	printf "<TD>Directory : <a href=${DIRNAME}>${DIRNAME}</a></TD>\n" >> ${EMC_TMP}/index.html
+	printf "</TR>\n" >> ${EMC_TMP}/index.html
+
+	done
+
+printf "</TABLE>" >> ${EMC_TMP}/index.html
+
+cd ${HOME}
+}
+################## End of root_level_index function #######################
+
+#AP:ADD:GERS_487:To check for VMware host.
+
+# Function : vmware_support
+# Description   : checkfor vmware server
+
+vmware_support()
+{
+
+OS_NAME=`uname -r | awk '/vmnix|ESX/'`
+
+if [ ${OS_NAME} ]
+then
+
+        printf "\nWARNING: This is a ESX Server."
+        printf "\nYou need to run EMCGrab-ESX which is developed & available for ESX servers and not the EMCGrab-${OS} (which currently you have run)."
+        printf "\nThe only output of EMCGrab-ESX is supported by VMHEAT for analysis purpose."
+        printf "\n\n"
+        cleanup; 
+        exit 0;
+fi
+
+}
+################## End of vmware_support function #######################
+
+#PA:S1:ADD:GERS_882:To check for NCR Teradata server.
+check_ncr_server()
+{
+
+OS_NAME_VAR=`uname -a | tr -s " " | cut -d" " -f3 | grep "NCR"`
+if [ -n "${OS_NAME_VAR}" ]
+then
+
+        printf "\nWARNING: This is a NCR Teradata Server."
+        printf "\nIt is recommended that not to run EMCGrab. As on a NCR Teradata system it may cause certain impacts .."
+        cleanup; 
+        exit 0;
+fi
+}
+#PA:E1:ADD:GERS_882:To check for NCR Teradata server.
+
+################## End of check_ncr_server function #######################
+
+# Function : legal_notice
+# Description   : Read legal notice and then proceed
+
+legal_notice()
+{
+    clear
+    # more $HOME/EMC_LEGAL_NOTICE.txt   # Modify by spender
+            
+        while [ -z "${ANSWER}" ]
+        do
+                printf "\n\n\nDO YOU AGREE TO ACCEPT THE TERMS & CONDITIONS OF THIS LEGAL AGREEMENT (Y/N): "
+                #read ANS in    # Modify by spender
+				ANS="Y"
+
+                if [ "${ANS}" = "Y" -o "${ANS}" = "y" ]
+                then
+                          ANSWER="got"
+
+                elif [ "${ANS}" = "N" -o "${ANS}" = "n" ]
+                then
+                          printf "\nTHANK YOU FOR USING EMCGrab.\n"
+                          printf "UNFORTUNATELY, YOU CAN'T RUN EMCGrab UNTIL YOU ACCEPT THE TERMS & CONDITIONS OF THIS LEGAL AGREEMENT.\n"                            
+                          exit 0;
+
+                else
+                          printf "\nINVALID INPUT. PLEASE ANSWER (Y/N)\n"
+                fi
+        done    
+}
+
+################## End of legal_notice function #######################

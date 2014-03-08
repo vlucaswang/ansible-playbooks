@@ -1,0 +1,7 @@
+# This file contains a list of files which are to be exluded 
+# when used in conjuction with the functions copy_dir
+kcore
+kmsg
+flush
+core
+sysrq-trigger

@@ -1,0 +1,33 @@
+---
+- name: Daily check on servers.
+  hosts: ansible-master
+  remote_user: root
+  tasks:
+  - name: Install Rsync pkg
+    yum: name=rsync state=present
+
+  - name: Sync the script to linux
+    synchronize: src=sysgrab_linux/ dest=/tmp/sysgrab/
+    when: ansible_os_family == "RedHat"
+
+  - name: Copy the script to aix
+    copy: src=sysgrab_AIX.tar dest=/tmp/
+    when: ansible_os_family == "AIX"
+
+  - name: Extract the script on AIX
+    command: /usr/bin/tar -xf /tmp/sysgrab_AIX.tar chdir=/tmp
+    when: ansible_os_family == "AIX"
+
+  - name: Execute the script
+    command: /tmp/sysgrab/sysgrab.sh -autoexec chdir=/tmp/sysgrab
+
+  - name: List files
+    shell: ls -1 /tmp/sysgrab/outputs/*.gz
+    register: outputfiles
+
+  - name: Fetch files
+    fetch: src={{ item }} dest=/opt/dailycheck/ flat=yes
+    with_items: outputfiles.stdout_lines
+
+  - name: Delete files
+    shell: rm -rf /tmp/sysgrab*

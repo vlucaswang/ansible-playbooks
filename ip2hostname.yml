@@ -1,0 +1,10 @@
+---
+- hosts: all
+  user: root
+  vars:
+    hostnamefile: '/root/ansible/hosts.hostname'
+  tasks:
+  - name: "Convert ip hosts file to hostname hosts file"
+    lineinfile: dest={{ hostnamefile }} regexp='.*{{ item }}$' line="{{ hostvars[item].ansible_hostname }}" state=present
+    when: hostvars[item].ansible_hostname is defined
+    with_items: groups['all']

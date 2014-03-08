@@ -1,0 +1,5 @@
+PARTY_NUMBER="888888"
+CUSTOMER_ID="scrcu.com"
+CONTACT_ID="spender"
+CONTACTPHONE_ID="86-28-8535-7256"
+EMAIL_ID="spender@scrcu.com.cn"

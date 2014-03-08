@@ -1,0 +1,231 @@
+#!/bin/sh 
+#----------------------------------------------------------------------------------------
+# Copyright (C) 2008-2011 by EMC Corporation 
+# All rights reserved.
+#----------------------------------------------------------------------------------------
+#
+
+# Variable Description
+# Devnum	: Logical device number of disk
+# Clnum         : Determine port number 
+#               : Used in conjuction with Cllet
+# Cllet         : Determine port letter
+# Array         : Determine numerical array type
+#               : Used in conjuction with Array2
+# Array2        : Used to determine vendor
+
+trap "printf \"\nInterrupt Caught....exiting\n\n\"; exit 1" 1 2 3 15
+
+#
+# Script Functions
+# 
+
+check_exe()
+{
+
+RC=`which $1 2>&1 | awk '{if (NF == 1) {res=0} else {res=1} } END {print res}'`
+
+if [ ${RC} -eq 0 ]
+then
+	INQ=$1
+	export INQ
+
+else 
+	return 1
+
+fi
+}
+
+usage()
+{
+printf "\nUsage : `basename $0` [-v]\n"
+printf "\t-v\t: Display current version information"
+
+printf "\n\n"
+exit 0
+}
+
+print_inq_warning()
+{
+printf "\nYou are not running the minimum version of inq required"
+printf "\nPlease download the latest release for your Operating System from"
+printf "\nftp.emc.com/pub/symm3000/inquiry/latest\n\n"
+
+exit 1
+}
+
+#
+# End of script functions
+#
+
+# Script Variables
+
+VER=1.2
+
+HOME=`pwd`
+INQ_NAME=inq
+
+# Minimum version information to support required functionality
+
+MIN_INQ_VER=7
+MIN_INQ_REL=3
+MIN_INQ_BLD=487
+
+
+# Handle command line arguments
+
+while [ $# -gt 0 ]
+do
+	case $1 in
+		-v) printf "\n`basename $0` : Version ${VER}\n\n"; exit 0;;
+		*) usage;;
+
+	esac
+done
+
+
+
+# Need to handle discovery of INQ, and set INQ variable.  If called by EMCGrab
+# INQ variable should already be set
+
+while [ -z "${INQ}" ]
+do
+	# Assumption is made that executable is called inq
+	# Need to see whether inq is available in the search path
+
+	check_exe ${INQ_NAME}
+
+	if [ $? -eq 1 ]
+	then
+
+		# Inq was not found.  Prompt customer for name and path
+
+		ANSWER=
+
+		while [ -z "${ANSWER}" ]
+		do
+			printf "\nPlease enter the full path to 'inq' : "
+
+			read ANSWER
+		done
+
+
+		if [ -d "${ANSWER}" ]
+		then
+			# Customer has defined directory path
+
+			PATH=${PATH}:${ANSWER}
+		else
+
+			INQ_NAME=`basename ${ANSWER}`
+			PATH=${PATH}:`dirname ${ANSWER}`
+		fi
+
+		export PATH
+
+		check_exe ${INQ_NAME} 
+
+		#if [ $? -eq 1 ]
+		#then
+		#	echo "Failed to find ${INQ_NAME}"
+		#	fi
+	fi
+done
+
+# Check the version of inq
+
+VER_INFO=`${INQ} -h | grep Version | awk '{ print $4 }' | cut -c2-`
+INQ_VER=`echo ${VER_INFO} | cut -c1`
+INQ_REL=`echo ${VER_INFO} | cut -c3`
+INQ_BLD=`echo ${VER_INFO} | cut -c5-`
+
+if [ ${INQ_VER} -lt ${MIN_INQ_VER} ]
+then
+	print_inq_warning
+
+elif [ ${INQ_VER} -eq ${MIN_INQ_VER} ]
+then
+	# Need to validate release
+
+	if [ ${INQ_REL} -lt ${MIN_INQ_REL} ]
+	then
+		print_inq_warning
+
+	elif [ ${INQ_REL} -eq ${MIN_INQ_REL} ]
+	then
+
+		# Need to validate the build
+
+		if [ ${INQ_BLD} -lt ${MIN_INQ_BLD} ]
+		then
+			print_inq_warning
+
+		fi
+	fi
+fi
+
+
+
+for i in `${INQ} -nodots | awk '/OPEN/ {print $1}`
+do
+	Devnum=`${INQ} -page0 -dev $i | awk '/0020:/ {print substr($18,13,4)}'`
+	Clnum=`${INQ} -hds_wwn -dev $i | awk '/Array WWN/ {print substr($3,15,1)}'`
+	Cllet=`${INQ} -hds_wwn -dev $i | awk '/Array WWN/ {print substr($3,16,1)}'`
+	Array=`${INQ} -page0 -dev $i | awk '/0020:/ {print substr($18,6,3)}'` 
+	Array2=`${INQ} -page0 -dev $i | awk '/0000:/ {print substr($18,length($18)-1,length($18))}'`
+
+	case $Cllet in
+		0) Letter=A;;
+		1) Letter=B;;
+		2) Letter=C;;
+		3) Letter=D;;
+		4) Letter=E;;
+		5) Letter=F;;
+		6) Letter=G;;
+		7) Letter=H;;
+	esac
+
+	case $Clnum in
+		0) Num=1;;
+		1) Num=2;;
+		2) Num=3;;
+		3) Num=4;;
+		4) Num=5;;
+		5) Num=6;;
+		6) Num=7;;
+		7) Num=8;;
+	esac
+
+	case $Array in
+		400)    if [ "$Array2" = "HP" ]
+			then
+				ArrayType=XP512
+			else
+				ArrayType=HDS9960
+			fi;;
+
+		401)    if [ "$Array2" = "HP" ]
+			then
+				ArrayType=XP48
+			else
+				ArrayType=HDS9910
+			fi;;
+
+		450)    if [ "$Array2" = "HP" ]
+			then
+				ArrayType=XP1024
+			else
+				ArrayType=HDS9980V
+			fi;;
+
+		451)    if [ "$Array2" = "HP" ]
+			then
+				ArrayType=XP128
+			else
+				ArrayType=HDS9970V
+			fi;;
+	esac
+
+	echo $i  LDevice=$Devnum Port=CL$Num$Letter ArrayType=$ArrayType
+done
+

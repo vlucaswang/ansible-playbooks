@@ -1,0 +1,484 @@
+#!/bin/sh 
+#----------------------------------------------------------------------------------------
+# Copyright (C) 2008-2011 by EMC Corporation 
+# All rights reserved.
+#----------------------------------------------------------------------------------------
+#
+
+#
+# This source file contains the following functions.  A description of each is 
+# provided with the function
+#
+# check_dir
+# sleep_timer
+# add_text
+# check_sw_inst
+# copy_single_file
+# run_single_command
+# copy_dir
+# expand_tar_list_entry
+# tar_dir
+# tar_files
+
+if [ ${DBG} -eq 0 ]
+then
+	set -x
+fi
+
+# Function : check_dir
+# Description	: Create directory under EMC_TMP, based on module name.
+#		: SCRIPT_TMP is defined in each module
+
+check_dir()
+{
+
+# If the temporary directory defined by SCRIPT_TMP does not exist, create.
+
+if [ ! -d ${SCRIPT_TMP} ]
+then 
+	mkdir ${SCRIPT_TMP}
+
+fi
+
+}
+
+
+# Function : sleep_timer
+# Description	: Provide 'periods' every second whilst task is still running
+#		: Terminate task after MAX_RUNTIME
+
+sleep_timer()
+{
+PID=$!
+
+# Each module can now define the MAX_RUNTIME for each command
+# by defining the RUNTIME variable (in seconds).  If not set
+# will default to 180 seconds
+
+if [ -z "${RUNTIME}" ]
+then
+	MAX_RUNTIME=180
+else
+	MAX_RUNTIME=${RUNTIME}
+fi
+
+CNT=0
+
+while `ps -p ${PID} > /dev/null` 
+do
+	sleep 1
+	printf "."
+	CNT=`expr ${CNT} + 1`
+
+	# Attempt to terminate command (referenced by PID) 
+	# should it exceed the defined MAX_RUNTIME
+
+	if [ ${CNT} -gt ${MAX_RUNTIME} ]
+	then
+		echo "\nCommand ${LINE} running for more than ${MAX_RUNTIME} seconds" | tee -a ${RPT}
+		
+
+		echo "Attempting to kill process ${PID}" | tee -a ${RPT}
+		kill -9 ${PID}
+
+		if [ $? -ne 0 ]
+		then
+			echo "Unable to kill Process ${PID} (${LINE})" | tee -a ${RPT}
+			break
+		fi
+
+		# Give system time to terminate the process
+
+		sleep 5		
+	fi
+done
+}
+
+# Function : add_text
+# Description : Add text to each output for easier identifcation
+
+add_text()
+{
+
+cat << EndText >> ${SCRIPT_TMP}/${OUTPUT}.txt
+################################################
+# This text has been added by EMCGrab          #
+# Copyright (C) 2008-2011 by EMC Corporation   #
+# All rights reserved.                         #
+################################################
+# Party Number : ${PARTY_NUMBER}
+# Customer : ${CUSTOMER_ID}
+# Contact Name : ${CONTACT_ID}
+# Contact Phone : ${CONTACTPHONE_ID}
+# Contact eMail : ${EMAIL_ID}
+# Service Request Number : ${CLARIFY_ID}
+# Hostname : ${HOSTNAME}
+# Command used to generate this file : ${LINE}
+# Output Filename : ${OUTPUT}.txt
+# Date : `date`
+################################################
+
+EndText
+
+}
+
+# Function : check_sw_inst
+# Description	: Checks Installation Directory for Installed Software
+# 		: DEF_INSTALL and DIR_NAME are defined in each module
+
+check_sw_inst()
+{
+ANSWER=
+
+# If running in autoexec mode, then we report as found and use the default install path
+
+if [ ! -d ${DEF_INSTALL} -a ${AUTOEXEC} -eq 1 ]
+then
+	printf "\nDirectory '${DIR_NAME}' not found in default path `dirname ${DEF_INSTALL}`"
+	while [ -z "${ANSWER}" ]
+	do
+		printf "\nPlease define the path to the ${DIR_NAME} directory or 's' to skip : " 
+		read ANSWER
+	done
+
+	if [ ${ANSWER} = "s" -o ${ANSWER} = "S" ]
+	then
+		return 2
+	else
+		# Specific Handling to catch entries which match default install path
+
+		if [ "${ANSWER}" = "${DEF_INSTALL}" ]
+		then
+			printf "\nUnable to find '${DIR_NAME}' directory" | tee -a ${RPT}
+		else
+
+			# Check to determine whether fully qualified path or not
+
+        		if [ `basename ${ANSWER}` = "${DIR_NAME}" -a -d "${ANSWER}" ]
+			then
+				INSTALL="${ANSWER}"
+				return 0
+			else
+				if [ ! -d ${ANSWER}/${DIR_NAME} ]
+				then
+					printf "\nUnable to find '${DIR_NAME}' directory at the location specified (${ANSWER})\n" | tee -a ${RPT}
+				else
+					INSTALL="${ANSWER}/${DIR_NAME}"
+					return 0
+				fi
+			fi
+		fi
+	fi
+	
+elif [ -d ${DEF_INSTALL} ]
+then
+	INSTALL=${DEF_INSTALL}
+	return 0
+
+else
+	return 1
+fi
+}
+
+
+# Function : copy_single_file
+# Description	: Copy file, display message and log entry to $RPT
+#		: $1 is the name of the file to copy
+#		: $2 (optional) is the target directory
+
+copy_single_file()
+{
+
+# CMD is referenced by sleep_timer, hence it's requirement here.
+
+CMD=cp
+
+for file in ${1}
+do
+	if [ ! -f ${file} ]
+	then
+		printf "\nCopying file ${file}....not found - skipping" >> ${RPT}
+	
+	else
+		printf "\nCopying file ${file}" | tee -a ${RPT}
+
+		# Copy file as background task, so we can monitor progress, and 
+		# display "." every second -- except for Linux systems
+		# sleep timer on Linux SuSE 10 causes hangs
+
+		if [ ${OS} = "Linux" ]
+		then
+			if [ -z "${2}" ]
+			then
+
+# SD:MOD:S1:GERS_488:To substitute colons with underscore and store in $FILE_NAME 
+                                BASE_NAME=`basename ${file}`
+                                FILE_NAME=`echo ${BASE_NAME}|sed -e 's/:/_/g'`
+				cp -p ${file} ${SCRIPT_TMP}/${FILE_NAME}
+	
+			elif [ ${2} = "keep_dir_path" ]
+			then
+				mkdir -p ${SCRIPT_TMP}`dirname ${file}`
+			        BASE_NAME=`basename ${file}`
+                                FILE_NAME=`echo ${BASE_NAME}|sed -e 's/:/_/g'`
+				cp -p ${file} ${SCRIPT_TMP}`dirname ${file}`/${FILE_NAME}
+	
+			else
+				mkdir -p ${SCRIPT_TMP}${2}
+                                BASE_NAME=`basename ${file}`
+                                FILE_NAME=`echo ${BASE_NAME}|sed -e 's/:/_/g'`
+				cp -p ${file} ${SCRIPT_TMP}${2}/${FILE_NAME}
+# SD:MOD:E1:GERS_488:To substitute colons with underscore and store in $FILE_NAME
+
+			fi			
+		else
+			if [ -z "${2}" ]
+			then
+				BASE_NAME=`basename ${file}`
+                                FILE_NAME=`echo ${BASE_NAME}|sed -e 's/:/_/g'`
+                                cp -p ${file} ${SCRIPT_TMP}/${FILE_NAME} &
+				
+	                        sleep_timer
+	
+			elif [ ${2} = "keep_dir_path" ]
+			then
+				mkdir -p ${SCRIPT_TMP}`dirname ${file}`
+			        BASE_NAME=`basename ${file}`
+                                FILE_NAME=`echo ${BASE_NAME}|sed -e 's/:/_/g'`
+                                cp -p ${file} ${SCRIPT_TMP}`dirname ${file}`/${FILE_NAME} &	
+
+				sleep_timer
+
+			else
+				mkdir -p ${SCRIPT_TMP}${2}
+                                BASE_NAME=`basename ${file}`
+                                FILE_NAME=`echo ${BASE_NAME}|sed -e 's/:/_/g'`
+                                cp -p ${file} ${SCRIPT_TMP}${2}/${FILE_NAME} &
+
+				sleep_timer
+
+			fi
+		fi
+	fi
+done
+}
+
+
+# Function : parse_command_line
+# Description 	: Splits $LINE into command and arguments
+#		: This is used to overcome 1024 byte limitations
+#		: of host based commands such as awk
+
+parse_command_line()
+{
+FULL_CMD=$1
+ARG=$2
+}
+
+
+
+# Function : run_single_command
+# Description	: Run command, display message, monitor process and terminate
+#		: if command exceeds RUNTIME value defined in each module.  
+#		: Log entry to $RPT
+
+run_single_command()
+{
+LINE="$1"
+OUTPUT="$2"
+
+parse_command_line ${LINE}
+
+CMD_EXIST=0
+
+# CMD is just the executable portion of the command without the path
+
+CMD=`echo ${FULL_CMD} | awk -f ${AWK}/extract_executable.awk`
+
+if [ -n "${CMD}" -a "${CMD}" != "#" ]
+then
+	# Check for command existance, either fully qualified or path
+
+	if [ -f "${FULL_CMD}" ]
+	then
+		CMD_EXIST=1
+	else
+		CMD_EXIST=`which ${CMD} 2>&1 | awk -f ${AWK}/check_exe.awk`
+	fi
+
+	if [ ${CMD_EXIST} -eq 0 ]
+	then
+		printf "\n${LINE} ....not found - continuing" >> ${RPT}
+	else
+		printf "\nRunning Command ${LINE}" | tee -a ${RPT}
+
+		# This records the command being run to the error report
+		# so we can identify which command produced any std_err
+
+		printf "\nCommand : ${LINE}" >> ${ERR_RPT}
+
+		# Build variable for use as output file name.  This is same as
+		# command name with exception of meta characters
+
+		if [ -z "${2}" ]
+		then
+			OUTPUT=`echo ${LINE} | sed -e 's/|/_/g' -e 's/\.\*//g' -e 's/\*//g' -e 's/\//_/g' -e 's/ /_/g' -e 's/,/_/g'`
+		else
+			OUTPUT=`echo ${2} | sed -e 's/|/_/g' -e 's/\.\*//g' -e 's/\*//g' -e 's/\//_/g' -e 's/ /_/g' -e 's/,/_/g'`
+		fi
+	
+		# Dump information to start of output file
+
+		add_text
+
+		# Run Command as background task
+
+		eval ${LINE} >> ${SCRIPT_TMP}/${OUTPUT}.txt 2>>${ERR_RPT} &
+
+		# Monitor background process and provide '.' every second
+		# Attempt to kill process if exceeds MAX_RUNTIME
+
+		sleep_timer
+
+	fi
+fi
+}
+
+
+# Function : copy_dir
+# Description	: Abilility to copy the contents of the entire directory
+#		: to SCRIPT_TMP
+#		: $1 is the name of the directory to copy
+#		: $2 (Optional) defines whether copy_dir is recursive.  
+#		: Argument is "recursive" 
+copy_dir()
+{
+COPY_DIR=$1
+
+if [ -d ${COPY_DIR} ]
+then
+
+	DIR_SAVE=`pwd`
+	cd ${COPY_DIR}
+
+	if [ "$2" = "recursive" ]
+	then
+
+		# Build list of files in the directory
+		FILE_LIST=`find . -print`
+	else
+		FILE_LIST=`find . \( -type d ! -name . -prune \) -o \( -type f -print \)`
+
+	fi
+
+	for i in ${FILE_LIST}
+	do
+
+		if [ -f ${i} ]
+		then
+			check_excluded_files ${i}
+
+			if [ $? -eq 1 ]
+			then
+ 
+# SD:MOD:S2:GERS_488: To substitute colon with underscore for each content of $FILE_LIST and store in $NEW_NAME
+			       
+				NEW_NAME=`echo ${i} | sed -e 's/\.\///g' -e 's/:/_/g'`
+				copy_single_file "${COPY_DIR}/${i}" "${COPY_DIR}/`dirname ${NEW_NAME}`"
+
+# SD:MOD:E2:GERS_488: To substitute colon with underscore for each content of $FILE_LIST and store in $NEW_NAME				
+				
+			fi
+		fi
+
+	done
+
+	cd ${DIR_SAVE}
+
+else
+	printf "\nCopying file ${COPY_DIR}/*....not found - skipping" >> ${RPT}
+fi
+
+}
+
+# Function : expand_tar_list_entry
+# Description	: Expand a list of wildcard entries for use by tar
+# Status	: Unused at present
+
+expand_tar_list_entry()
+{
+for TAR_LIST_ENTRY in $1
+do
+	echo ${TAR_LIST_ENTRY} >> ${TAR_LIST}
+done
+}
+
+# Function : tar_dir
+# Description	: Tar a specified directory
+#		: $1 is the name of the directory
+#		: $2 is the name of the output file
+tar_dir()
+{
+if [ -d $1 ]
+then
+	if [ -z "${INSTALL}" ]
+	then
+		printf "\nTarring contents of ${1} to ${2}" | tee -a ${RPT}
+	else
+		printf "\nTarring contents of ${INSTALL}/${1} to ${2}" | tee -a ${RPT}
+	fi
+
+	if [ ! -f ${SCRIPT_TMP}/${2} ]
+	then
+		tar cf ${SCRIPT_TMP}/${2} ${1} 2>> ${RPT} &
+		sleep_timer
+	else
+		tar uf ${SCRIPT_TMP}/${2} ${1} 2>> ${RPT} &
+		sleep_timer
+	fi
+
+else
+	printf "\nDirectory ${1} not found....continuing" >> ${RPT}
+fi
+}
+
+# Function : tar_files
+# Description	: Tar together a list of files
+#		: $1 is the list of files
+#		: $2 is the name of the output file
+tar_files()
+{
+for i in ${1}
+do
+	if [ -f ${i} ]
+	then
+		printf "\nTarring file ${i} to ${2}" | tee -a ${RPT}
+		if [ ! -f ${SCRIPT_TMP}/${2} ]
+		then
+			tar chf ${SCRIPT_TMP}/${2} ${i} 2>> ${ERR_RPT} &
+			sleep_timer
+		else
+			tar uhf ${SCRIPT_TMP}/${2} ${i} 2>> ${ERR_RPT} &
+			sleep_timer
+		fi
+	fi
+done
+}
+
+# Function : check_excluded_files
+# Description 	: Check whether each file is in excluded_files
+#		: $1 is the name of the file to check
+check_excluded_files()
+{
+FILE=`basename $1`
+
+grep "^${FILE}$" ${SCRIPTS}/excluded_files > /dev/null 2>&1
+
+if [ $? -eq 0 ]
+then
+	printf "\nFile ${FILE} not copied....matched exclusion list" >> ${RPT}
+	return 0
+else
+	return 1
+fi
+}

@@ -1,0 +1,355 @@
+#---------------------------------------------------------------------------------------
+# Copyright (C) by EMC Corporation, 2008-2011
+# All rights reserved.
+#---------------------------------------------------------------------------------------
+
+*****************************************************************************************
+
+Release	     : EMCGrab v4.2
+
+Release Date : April 15, 2009
+
+Author	     : GSTools
+
+*****************************************************************************************
+
+PERFORMANCE DEGRADATION NOTICE:
+On some hosts, where high I/O is a normal course of events,
+running the EMCGrab utility may cause some performance
+degradation when running some commands. 
+
+Best practices should prevail, such as running at off peak hours
+
+*****************************************************************************************
+
+IMPORTANT NOTICES FOR ALL OS:
+
+If the EMCgrab is run with the -autoexec feature enabled and the host uses naviseccli 
+(in case of navicli is not found) then in order to collect Clariion information, the 
+security file should have been already created using -AddUserSecurity feature of naviseccli.
+If that file is absent then EMCGrab will not collect any clariion information. 
+
+If a Symmetrix is attached to a host and if the symmetrix devices are not enabled for 
+masking then, while running the symmaskdb and symaccess commands you can encounter 
+a message as: 
+
+"No device masking database records could be found for the specified input parameters"
+
+IMPORTANT NOTICES FOR SOLARIS:
+
+****** Before running EMCgrab please take note of these ETAs ******
+
+ETA emc108113: PowerPath 4.4 / 4.3.1: SYMCLI commands hang or fail.
+HBA goes Offline/Online. This issue is resolved in SAN release 4.4.9
+for Solaris 8 & 9. For Solaris 10, fix included in 119130-17.
+ 
+ETA emc121607: Solutions Enabler: Solaris Leadville MPxIO segments 
+Solution Enabler communication through multi-path gatekeepers or
+other data devices.
+
+Solaris 5.9: If patch 114476 is installed, if at revision 04 or less,
+may cause a panic when running hbainfo commands. Install patch
+114476-05 or greater to prevent the panic. Ref: emc118999
+
+ETA emc206187: Solutions Enabler: The "symmask list -hba" command hangs and 
+EMCGrab hangs or can take hours to complete on Solaris 10.
+This issue has been taken care in this grab  release by replacing above 
+command with the command "syminq hba"
+
+IMPORTANT NOTICES for AIX:
+
+****** Before running EMCgrab please take note of these ETAs ******
+
+ETA emc111737: AIX 5.3 ML2 host crashes when pass-through I/O 
+is performed. APAR IY70336 or AIX 5.3 ML3 resolves this issue.
+
+ETA emc110417: AIX lspath may report a path as enabled when it
+has actually been removed. This may cause a system failure.
+APAR IY70336 or AIX 5.3 ML3 resolves this issue.
+
+ETA emc178626: EMC ControlCenter: Recent IBM patches to AIX may result 
+in system crash when using ControlCenter, Solutions Enabler or inq.
+
+*****************************************************************************************
+
+EMCGrab v4.2 changes
+
+1. Added new module - "networks.sh" - (ALL)
+        a. Added following command - 
+           run_single_command "inquire"
+           to collect information of all devices connected to Host.             
+
+2. changes to module - "Aix.sh" - (Aix)
+        a. Added following commands -
+           run_single_command "nfsstat"
+           run_single_command "lsnfsmnt"
+           one of the following commands are run based on the nfso version -
+           run_single_command "nfso -L"
+           run_single_command "nfso -a"
+
+3. Changes to module - "pp.sh" - (ALL)
+        a. Added following commands for Linux and Aix host RSA PowerPath Encryption -
+           run_single_command "powervt xcrypt -info -dev all"
+           copy_dir "/etc/emc/rsa/rkm_client/config"
+           copy_dir "/etc/emc/rsa/cst/config"   
+        
+        b. Added following command for Linux host Management Daemon - 
+           copy_single_file "/etc/snmpd.conf" "keep_dir_path" 	   
+	   
+4. Changes to module - "se.sh" - (ALL)
+	a. Removed following command -
+	   run_single_command "symmask list hba" 
+           	
+	b. Added following command -
+	   run_single_command "syminq hba" 
+           which collects similar information obtained by the command,
+           run_single_command "symmask list hba"
+        
+	c. Changes made by assigning HBA="`syminq hba 2> /dev/null | awk '/Port WWN/ { print $4 }'`"
+           instead of HBA="`symmask list hba 2> /dev/null | grep [0-9] | awk 'NF >= 3 { print $1 }'`"
+        
+	d. Added following commands for SE 7 & Symmetrix VMax/Tigon - 
+           run_single_command "symaccess -sid <symm_id> list logins" 
+           symaccess show <group_name> -type init -detail -sid <symm_id>.
+	   
+	   run_single_command "symaccess -sid <symm_id> -f <filename> backup -noprompt" "symaccess_backup"
+           The following format is followed for the filename : <symm_id>_Month.day.Year.aclx
+	   
+           run_single_command "symaccess show view <mask_view_name> -sid <symm_id>" 
+
+5. Changes to module - "clariion.sh" - (ALL)
+        a. Added functionality to run naviseccli commands when script is run in non-iterative mode,
+           provided the naviseccli security file has been created then all naviseccli commands will
+           be run without username, password and scope	
+
+
+****************************************************************************************
+
+This script is provided as a means to collect system and/or software 
+configuration for investigations by EMC.
+
+To Install :
+
+Extract the tar file into a suitable directory using following command, 
+
+command: tar -xvf emcgrab_<os>_<version>.tar  
+
+Please ensure that your filesystem has at least 500M free of disk space 
+for temporary files that may be generated during its processing.  
+If running ECC 5.x the resulting tar file could be very large.
+
+Please NOTE:
+
+1. The script will prompt the user with a warning message
+should it detect less than 25M remaining on the file system every time the
+script runs the file system check routine. Each time the user will have the
+option of continuing or aborting the script.
+
+2. The script will prompt for EMC license agreement even in autoexec
+mode. Once EMC license agreement is accepted then it will work as usual for
+autoexec mode.
+
+Operation :
+The script should be run as user root, to prevent any data not being 
+collected through lack of permissions.
+
+The scripts defines a PATH environment based on the default installation paths
+of it's software.  If these are different, some modules may not work.
+
+It is possible that some commands could run for a lengthy period. Each module
+has a max runtime limit, ranging from 60 seconds through to 450, depending
+on the module.
+
+The script will generate a compressed tar file, residing in the outputs
+directory.  Its format will be 
+'<hostname>_YYYY-mm-dd-hh.mm.ss>_<OS>_emcgrab_<version>_[full | lite]_CC<Request Number>.tar.<Z|gz>'
+depending on whether compress or gzip has been used as their compression utility.
+
+If no Request number is defined, <CaseNo> will default to 0000000000
+
+Syntax :
+
+./emcgrab.sh [-h] [-v] [-lite] [-backup] [-autoexec] [-symmid bypass|prompt] [-o options,options] 
+	     [-clariionIP <IP Addresses> ] [-OUTDir new_output_directory] 
+
+where
+	-h	    : Displays help screen
+	-v	    : Displays version information
+	-o	    : User defined options, Comma Separated List (See below)
+	-lite	    : A reduced subset of data collection as required
+		    : by EMC's automated analysis server
+	-symmid     : bypass|prompt - Bypasses Symmetrix or prompts for each Symmetrix detected
+	-backup	    : Bypasses interactive menu, when scheduled via cron.
+	-quiet	    : Suppress all status messages
+	-clariionIP : Comma separated list of IP addresses for SPA / SPB
+	-ip         : Comma separated list of IP addresses for SPA / SPB
+        -OutDir     : Option to store final EMCGrab file at specified location
+        -vxdmpdebug : Runs vxdmpdebug script with 'Y' option enabled
+        -autoexec   : Bypasses user interactive prompts (but will prompt for EMC's license)
+
+Options :
+
+This is a comma separated list of additional modules. By default these
+options are not run, and need to be invoked by the -o syntax.
+
+Supported Optional modules are as follows :-
+
+	: clariion - Must be used with -clariionIP <SPA,SPB>
+	: dru - Collect data relating to the EMC Open Migrator/LM (DRU)
+	: ecc - Collects configuration and log files for ECC 4.x / 5.x.
+	: edm - Collects data relating to EMC Data Manager
+	: erm - Collects data relating to EMC Replication Manager (Autorun)
+	: hacmp - To collect log files relating to AIX HACMP cluster.
+	: ifs - Infomover File System
+	: ift - Infomover File Transfer
+	: im - Both ifs and ift modules
+	: inq - Perform SCSI inquiry against devices (automatic detection)
+	: pp - PowerPath (automatic detection)
+	: ppvm - PowerPath Volume Manager (automatic detection)
+	: sc - Sun Cluster 3.0. 
+	: sdmm - Symmetrix Data Mobility Manager
+	: se - Solutions Enabler (automatic detection)
+	: svm - Solaris Volume Manager
+	: vcs - Veritas Cluster Server.
+	: vxvm - Run Veritas Volume Manager  (automatic detection)
+        : rp - To collect logs on Solaris & AIX in Recover Point Environment
+	: networks - Collects data relating to Devices attached to Host.
+
+OS Support :
+
+This version of EMCGrab is tested and supported on the following Operating Systems
+
+	: Solaris 2.6 or later
+	: AIX 4.3 or later
+	: HP-UX 10.20 or later
+	: Tru64 4.x or later (OSF1)
+	: RedHat Linux 7.x or later
+	: RedHat Advanced Server 2.1 or later
+	: SuSE Linux 7.x or later
+	: Irix 6.5.x  or later
+	: Siemens Reliant Unix 5.4.x or later
+
+During normal operation, it is possible that some commands will report 
+"Not Found", as the command file contains all commands for each OS and 
+application release.  This is normal.
+
+Host : HP-UX
+
+If BCV and / or RDF2 devices are presented to the host and they are in a 
+'Not Ready' state, then ioscan may timeout.
+
+Module Support :
+
+Module : clariion (Clariion Storage) 
+Automatic Detection : AIX, SunOS, HP-UX and Linux
+This requires Navisphere commands to be installed on the host platform.
+The IP addresses will be automatically detected for any SP where devices are
+visible to the host. You can define additional IP addresses through the use
+of the -clariionIP command line option
+
+Module : dru (EMC Open Migrator/LM) (Optional)
+Runs stormigrator commands, lists configured sessions and collects logs for
+last 14 days. No known issues.
+
+Module : ecc (EMC Control Center) (Optional)
+Predominately configured to collect ECC 5.x information.
+
+Module: edm (EMC Data Manager) (Optional)
+Collects EDM data. No known problems.
+
+Module: erm (EMC Replication Manager) (Automatic on AIX, HP-UX, Linux and Solaris)
+Collects ERM data. No known problems.
+
+Module : hacmp (AIX HACMP cluster) (Automatic Detection)
+Only collects log files.
+
+Module : ifs (EMC Infomover File System)(Optional)
+Collects configuration and log files for last 14 days. No known issues.
+
+Module : ift (EMC Infomover File Transfer)(Optional)
+Collects configuration and log files for last 14 days. No known issues.
+
+Module : im (EMC Infomover)(Optional)
+Runs both the ift and ifs modules above. No known issues.
+
+Module : inq (Automatic Detection)
+This is run by default to assist with automatic detection of Clariion 
+Storage Arrays
+
+Module : pp (Powerpath) (Automatic Detection)
+Will automatically detect whether PowerPath Volume Management features
+are in use, and invoke module ppvm (requires PP 4.x or later)
+
+Module : ppvm (EMC PowerPath Volume Manager) (Automatic Detection)
+No limitations known at this time.
+
+Module : sc (Sun Cluster 3.x) (Automatic Detection)
+Collects all information relating to Sun Cluster.  Currently only version 3.x 
+is supported.  
+
+Module : sdmm (Symmetrix Data Mobility Manager) (Optional)
+No limitations known at this time
+
+Module : se (Solutions Enabler)(Automatic Detection)
+A gatekeeper device should be visible to the host, for communication 
+to the Symmetrix. The script will attempt to check for the existance 
+of a gatekeeper, and it this check fails, you will have the option to 
+abort the remainder of this module. Some commands may not return any output,
+depending on whether the relevant Solutions Enabler license has been installed.
+
+Module : svm (Solaris Volume Manager / Solstice(Online) Disk Suite (Optional)
+Supports SDS / ODS 4.x, even though configuration paths changed 
+between 4.2 and 4.2.1. 
+
+Module : vcs (Veritas Cluster Server) 
+Automatic Detection : AIX, SunOS, HP-UX and Linux
+Collects all information relating to Veritas Cluster Server.  
+
+Module : vxvm (Veritas Volume Manager)
+Automatic Detection :  AIX, SunOS, HP-UX and Linux
+then data will be collected
+
+Module : rp (Recover Point) (optional)
+Should be specified with '-o' switch on Solaris and AIX host.
+then logs will be collected in Recover Point Environment.
+
+Module : ZFS 
+automatic Detection : SunOs
+
+Module : networks (network connection)
+This is run by default with all operating systems
+Collects Information of all devices connected to Host. 
+No known problems.
+
+Return Codes :
+
+	0 - Success
+	1 - Failed to source emcgrab.main
+	2 - Unable to create temporary working directory
+	3 - EMCGrab Data Collection already running.  Only a single instance
+	    is supported at any time.
+	4 - Script Aborted.  Less than 25Mb of space detected on FileSystem.
+	5 - Failed to create output tarfile
+	6 - Override for non 'root' user operation failed.
+	7 - File and directory dependencies not found.
+
+Sending the report file to EMC:
+
+Once you have created your report file you need to send it to EMC Customer 
+Service for analysis. This is done easily and securely using EMC WebSupport.
+
+Go to WebSupport Case Management (Note: You must be a registered WebSupport
+user.  Select the registration link to register) 
+
+For a new support case select 'Create a Case' and complete the simple
+step-by-step creation process. Once you submit your case you will have the
+opportunity to upload your EMC Grab file to your case using the 'Attachments'
+functionality. 
+
+For an existing Support case, locate your case by using the 'Quick Case Search'
+or 'My Open Cases' portlets or by using the 'Case Query' functionality in
+'Case Management.' Select the 'Attachments' tab and upload your file.
+
+Note: You may also use EMC's ftp site if WebSupport is not available.
+Contact EMC Customer Service for more information.
+
