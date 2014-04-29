@@ -1,0 +1,42 @@
+---
+- name: Installing IBM DB2
+  hosts: all
+  remote_user: root
+  
+  vars_prompt:
+  - name: "db2_version"
+    prompt: "Enter db2 version to be installed"
+	default: "9.7"
+	
+  tasks:
+  - name: Add common sysctl parameter
+    sysctl: name={{ item.name }} value={{ item.value }}
+	with_items:
+	- { name: "kernel.shmmni", value: "4096" }
+	- { name: "kernel.sem", value: "250 32000 100 128" }
+	
+  - name: Determine the size of the memory
+    shell: free -g
+	register: memory_size
+	
+  - name: Add memory-related sysctl parameter
+    sysctl: name={{ item.name }} value={{ item.value }}
+	with_items:
+	- { name: "kernel.shmmax", value: "15462000000" }
+	- { name: "kernel.shmall", value: "3355000" }
+	when: memory_size = 15
+	
+  - name: Sync the package
+    synchronize: src=/opt/repos/db2/{{ db2_version }}/ dest=/tmp/db2install/
+	
+  - name: Extract the package
+    command: /usr/bin/tar -xvf /tmp/db2install/*.tar.gz chdir=/tmp/db2install
+	
+  - name: Install the package
+    command: /tmp/db2install/server/db2_install -b /opt/ibm/db2 -p ESE chdir=/tmp/db2install/server
+	
+  - name: Import the license
+    command: /opt/ibm/db2/adm/db2licm -a /tmp/db2install/db2ese_c.lic chdir=/opt/ibm/db2/adm
+
+  - name: Delete the files
+    shell: rm -rf /tmp/db2install

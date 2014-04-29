@@ -1,0 +1,5 @@
+#/etc/hosts
+127.0.0.1	localhosts	{{ ansible_hostname }}
+{% for k,v in hostvars.iteritems() %}
+{{v['ansible_default_ipv4']['address']}} {{k['ansible_fqdn']}}
+{% endfor %}

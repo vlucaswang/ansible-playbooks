@@ -1,0 +1,7 @@
+---
+- name: Build hosts file
+  hosts: all
+  remote_user: root
+  
+  tasks:
+  - name: 

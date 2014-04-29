@@ -1,0 +1,14 @@
+---
+- name: Extend available vg to data lv
+  hosts: all
+  remote_user: root
+
+  tasks:
+  - name: extend rootvg on /dev/sdb
+    lvg: vg=rootvg pvs=/dev/sda2,/dev/sdb
+
+  - name: extend datalv to all free vgs
+    lvol: vg=rootvg lv=datalv size=100%FREE
+
+  - name: resize datalv
+    command: resize2fs /dev/rootvg/datalv

@@ -1,5 +1,8 @@
 ---
-- hosts: all
+- name: Build hosts file
+  hosts: all
+  remote_user: root
+  
   tasks:
-  - name: DNS fix
-    template: src=hosts.j2 dest=/etc/hosts owner=root group=root mode=0644
+  - name: Build hosts file
+    template: src=hosts.1.j2 dest=/etc/hosts.1 owner=root group=root mode=0644

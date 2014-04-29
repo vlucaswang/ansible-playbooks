@@ -1,0 +1,4 @@
+---
+# The "" makes this evaluate to a string. Which is good in some cases and bad in other...
+is_mgmt: "'$inventory_hostname' == 'webmgmt'"
+is_live: "'$inventory_hostname' == 'weblive1' or '$inventory_hostname' == 'weblive2'"
