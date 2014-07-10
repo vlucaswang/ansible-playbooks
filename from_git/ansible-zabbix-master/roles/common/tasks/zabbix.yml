@@ -1,0 +1,28 @@
+- name: mkdir ansible cache 
+  file: path=/var/cache/ansible state=directory owner=root group=root mode=0755
+  tags: zabbix-common
+
+- name: get zabbix-repos rpm RHEL5
+  get_url: dest={{ ansible_cache_dir }}/zabbix-release-2.0-1.noarch.rpm  url=http://repo.zabbix.com/zabbix/2.0/rhel/5/x86_64/zabbix-release-2.0-1.el5.noarch.rpm
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 5
+  tags: zabbix-common
+
+- name: get zabbix-repo rpm RHEL6
+  get_url: dest={{ ansible_cache_dir }}/zabbix-release-2.0-1.noarch.rpm  url=http://repo.zabbix.com/zabbix/2.0/rhel/6/x86_64/zabbix-release-2.0-1.el6.noarch.rpm
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 6
+  tags: zabbix-common
+
+- name: get http://repo.zabbix.com/RPM-GPG-KEY-ZABBIX
+  get_url: dest={{ ansible_cache_dir }}/RPM-GPG-KEY-ZABBIX  url=http://repo.zabbix.com/RPM-GPG-KEY-ZABBIX
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 6
+  tags: zabbix-common
+  register: get_key_result
+
+- name: import ZABBIX key
+  command: /bin/rpm --import {{ ansible_cache_dir }}/RPM-GPG-KEY-ZABBIX
+  when: get_key_result.changed
+  tags: zabbix-common
+
+- name: install zabbix-repos 
+  yum: pkg={{ ansible_cache_dir }}/zabbix-release-2.0-1.noarch.rpm state=installed disable_gpg_check=yes
+  tags: zabbix-common

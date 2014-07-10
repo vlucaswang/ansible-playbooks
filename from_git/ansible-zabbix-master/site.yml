@@ -1,0 +1,23 @@
+---
+# This playbook deploys the whole application stack in this site.  
+
+- name: apply common configuration to all nodes
+  hosts: all
+  sudo: yes
+
+  roles:
+    - common
+
+- name: configure and deploy the zabbix-server 
+  hosts: zabbix-server
+  sudo: yes
+
+  roles:
+    - server
+
+- name: deploy zabbix-agent
+  hosts: zabbix-agents
+  sudo: yes
+
+  roles:
+    - agents

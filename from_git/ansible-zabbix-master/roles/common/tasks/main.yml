@@ -1,0 +1,13 @@
+---
+# This playbook contains common plays that will be run on all nodes.
+
+- name: mkdir ansible cache
+  file: path={{ ansible_cache_dir }} state=directory owner=root group=root mode=0755
+
+- include: epel.yml
+- include: remi.yml
+- include: common-packages.yml
+- include: ntp.yml
+- include: ca-bundle.crt.yml
+- include: etckeeper.yml
+- include: zabbix.yml

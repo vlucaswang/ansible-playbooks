@@ -1,7 +1,51 @@
 ---
-- name: Build hosts file
+- name: install zabbix agent.
   hosts: all
   remote_user: root
-  
   tasks:
-  - name: 
+#  - name: Delete redhat.repo
+#    file: dest=/etc/yum.repos.d/redhat.repo state=absent
+
+  - name: List other repos
+    shell: ls -1 /etc/yum.repos.d/*
+    register: repos
+    when: ansible_architecture == "x86_64"
+
+  - name: Delete original repo
+    file: dest={{ item }} state=absent
+    with_items: repos.stdout_lines
+    when: ansible_architecture == "x86_64"
+
+#  - name: Disable other repos
+#    lineinfile: dest={{ item }} regexp=^.nabled= state=absent
+#    with_items: repos.stdout_lines
+
+#  - name: Disable other repos2
+#    lineinfile: dest={{ item }} regexp=^enabled= line=enabled=0
+#    with_items: repos.stdout_lines
+  
+  - name: Copy the repo conf
+    copy: src=rhel5x64.repo dest=/etc/yum.repos.d/
+    when: ansible_architecture == "x86_64"
+
+  - name: Install the agent
+    yum: pkg=zabbix-agent state=present enablerepo=rhel5x64
+    when: ansible_architecture == "x86_64"
+
+  - name: Copy agent conf
+    copy: src=zabbix_agentd.conf dest=/etc/zabbix/
+    when: ansible_architecture == "x86_64"
+    tags:
+    - postins
+    notify:
+    - restart zabbix agent
+
+  - name: Enable the service
+    service: name=zabbix-agent enabled=yes state=started
+    when: ansible_architecture == "x86_64"
+    tags:
+    - postins
+
+  handlers:
+  - name: restart zabbix agent
+    service: name=zabbix-agent state=restarted

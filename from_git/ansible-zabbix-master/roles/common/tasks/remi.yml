@@ -1,0 +1,25 @@
+
+- name: get remi-repo rpm RHEL6
+  get_url: dest={{ ansible_cache_dir }}/remi-release.rpm url=http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 6
+  tags: remi
+
+
+- name: get remi-repo rpm RHEL5
+  get_url: dest={{ ansible_cache_dir }}/remi-release.rpm url=http://rpms.famillecollet.com/enterprise/remi-release-5.rpm
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 5
+  tags: remi
+
+- name: get RPM-GPG-KEY-remi 
+  get_url: dest={{ ansible_cache_dir }}/RPM-GPG-KEY-remi url=http://rpms.famillecollet.com/RPM-GPG-KEY-remi
+  register: get_key_remi_result
+  tags: remi
+
+- name: import remi key
+  command: /bin/rpm --import {{ ansible_cache_dir }}/RPM-GPG-KEY-remi
+  when: get_key_remi_result.changed
+  tags: remi
+
+- name: install remi-repo rpm
+  yum: pkg={{ ansible_cache_dir }}/remi-release.rpm
+  tags: remi

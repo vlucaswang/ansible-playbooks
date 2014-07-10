@@ -1,0 +1,5 @@
+- name: copy ca-bundle.crt 
+  copy: src=ca-bundle.crt dest=/etc/pki/tls/certs/ca-bundle.crt owner=root group=root mode=0644
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 5
+  tags: ca-bundle.crt
+

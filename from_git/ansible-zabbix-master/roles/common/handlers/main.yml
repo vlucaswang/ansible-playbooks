@@ -1,0 +1,9 @@
+- name: import epel key
+  command: /bin/rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL
+  tags: epel
+
+- name: restart sshd
+  service: name=sshd state=restarted
+  tags: sshd
+
+- include: etckeeper.yml

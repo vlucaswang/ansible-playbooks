@@ -1,0 +1,15 @@
+---
+- name: Add remote elklog server to syslog.conf
+  hosts: all
+  remote_user: root
+
+  tasks:
+  - name: Add extra entry of elklog server to syslog.conf
+    lineinfile: dest=/etc/syslog.conf backup=yes line="*.info;mail.none;authpriv.none;cron.none;*.emerg;local7.* @10.128.128.104:514" state=present
+    notify:
+    - restart syslog
+
+  handlers:
+  - name: restart syslog
+    service: name=syslog state=restarted
+  

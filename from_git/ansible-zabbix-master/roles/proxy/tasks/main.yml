@@ -1,0 +1,34 @@
+
+- name: install zabbix-proxy
+  yum: name={{item}} enablerepo=epel state=installed
+  with_items:
+    - zabbix-proxy-sqlite3
+    - zabbix-proxy
+  tags: zabbix-proxy
+
+
+- name: set config server 
+  lineinfile: dest=/etc/zabbix/zabbix_proxy.conf regexp="^Server=.*" insertafter="^# Server=" line=Server={{ zabbix_server }}
+  notify: restart zabbix-proxy
+  tags: zabbix-proxy
+
+#- name: set config serveractive
+#  lineinfile: dest=/etc/zabbix/zabbix_proxy.conf regexp="^ServerActive=.*" insertafter="^# ServerActive=" line=ServerActive={{ zabbix_server }}
+#  notify: restart zabbix-proxy
+#  tags: zabbix-proxy
+
+- name: set config serveractive
+  shell: sed -i "s/^Hostname=Zabbix proxy$/Hostname=`{{ hostname_cmd }}`/" /etc/zabbix/zabbix_proxy.conf
+  notify: restart zabbix-proxy
+  tags: zabbix-proxy
+
+- name: set config dbfile_path
+  lineinfile: dest=/etc/zabbix/zabbix_proxy.conf regexp="^DBName=.*" insertafter="^# DBName=" line=DBName=/var/lib/zabbix/zabbix.db
+  notify: restart zabbix-proxy
+  tags: zabbix-proxy
+
+- name: mkdir /var/lib/zabbix
+  shell: |
+    mkdir -p /var/lib/zabbix
+    chown zabbix. /var/lib/zabbix
+  tags: zabbix-proxy

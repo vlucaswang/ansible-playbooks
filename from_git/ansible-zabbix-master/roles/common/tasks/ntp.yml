@@ -1,0 +1,4 @@
+- name: be sure ntpd is running and enabled
+  service: name=ntpd state=running enabled=yes
+  when: ansible_virtualization_type is not defined # vm
+  tags: ntpd

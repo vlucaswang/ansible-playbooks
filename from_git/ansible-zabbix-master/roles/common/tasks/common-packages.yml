@@ -1,0 +1,9 @@
+- yum: name={{item}} enablerepo=epel state=installed
+  with_items:
+    - ntp
+    - bind-utils
+    - yum-utils
+    - unzip
+    - git
+    - tig
+  tags: common-packages

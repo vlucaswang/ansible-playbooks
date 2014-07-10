@@ -1,0 +1,7 @@
+[zabbix-server]
+localhost  ansible_connection=local 
+
+[zabbix-agents]
+localhost  ansible_connection=local 
+
+

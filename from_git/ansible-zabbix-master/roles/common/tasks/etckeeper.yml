@@ -1,0 +1,25 @@
+
+- name: install etckeeper RHEL6
+  yum: name=etckeeper enablerepo=epel state=present
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 6
+  tags:
+    - packages
+    - etckeeper
+  notify:
+    - initialise etckeeper
+
+- name: install etckeeper RHEL5
+  shell: | 
+    git clone git://git.kitenet.net/etckeeper &&
+    cd {{ ansible_cache_dir }}/etckeeper &&
+    sed -i 's/^VCS=".*"/VCS="git"/' {{ ansible_cache_dir }}/etckeeper/etckeeper.conf  &&
+    sed -i 's/^LOWLEVEL_PACKAGE_MANAGER=.*/LOWLEVEL_PACKAGE_MANAGER=rpm/' {{ ansible_cache_dir }}/etckeeper/etckeeper.conf &&
+    sed -i 's/^HIGHLEVEL_PACKAGE_MANAGER=.*/HIGHLEVEL_PACKAGE_MANAGER=yum/' {{ ansible_cache_dir }}/etckeeper/etckeeper.conf &&
+    make install
+    chdir={{ ansible_cache_dir }} creates=/usr/bin/etckeeper
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 5
+  tags: etckeeper
+  notify:
+    - initialise etckeeper
+    - set cron.daily with etckeeper (CentOS 5)
+

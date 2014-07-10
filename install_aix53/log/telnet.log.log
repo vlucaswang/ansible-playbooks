@@ -1,0 +1,156 @@
+==============================================
+From adresse IP: 
+Connect to server: , port: 23
+Date: 2014-01-22 17:48:14
+ServerType: telnet.log
+----------------------------------------------
+
+telnet (sitscfa)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+AIX Version 5
+Copyright IBM Corporation, 1982, 2010.
+login: 
+> root
+> 123456
+*******************************************************************************
+*                                                                             *
+*                                                                             *
+*  Welcome to AIX Version 5.3!                                                *
+*                                                                             *
+*                                                                             *
+*  Please see the README file in /usr/lpp/bos for information pertinent to    *
+*  this release of the AIX Operating System.                                  *
+*                                                                             *
+*                                                                             *
+*******************************************************************************
+Last unsuccessful login: Thu Jan 16 09:20:07 BEIST 2014 on ssh from 10.16.8.44
+Last login: Wed Jan 22 17:46:04 BEIST 2014 on ssh from 10.16.8.57
+
+root@sitscfa:/> 
+> cd /tmp/ansible
+root@sitscfa:/tmp/ansible> 
+> ls -l *rpm 
+-rw-r-----    1 root     system      1764856 Jan 22 17:45 bash-4.2-12.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       122731 Jan 22 17:45 bzip2-1.0.6-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      3054640 Jan 22 17:45 db4-4.7.25-2.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       389811 Jan 22 17:45 expat-2.1.0-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      1016700 Jan 22 17:45 fontconfig-2.10.2-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       802610 Jan 22 17:45 freetype2-2.5.2-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system     17916669 Jan 22 17:45 gcc-4.8.2-1.aix5.3.ppc.rpm
+-rw-r-----    1 root     system      6537679 Jan 22 17:45 gcc-c++-4.8.2-1.aix5.3.ppc.rpm
+-rw-r-----    1 root     system      5829527 Jan 22 17:45 gcc-cpp-4.8.2-1.aix5.3.ppc.rpm
+-rw-r-----    1 root     system      9851786 Jan 22 17:45 gcc-gfortran-4.8.2-1.aix5.3.ppc.rpm
+-rw-r-----    1 root     system        79810 Jan 22 17:45 gdbm-1.10-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      2223925 Jan 22 17:45 gettext-0.17-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      8708281 Jan 22 17:45 glib2-2.38.2-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      1518681 Jan 22 17:45 gmp-5.1.3-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       262713 Jan 22 17:45 info-5.1-2.aix5.1.ppc.rpm
+-rw-r-----    1 root     system        48042 Jan 22 17:45 lemon-3.8.1-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       217394 Jan 22 17:45 libXft-2.3.1-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system        90446 Jan 22 17:45 libXrender-0.9.8-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       130215 Jan 22 17:45 libffi-3.0.13-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       862219 Jan 22 17:45 libgcc-4.8.2-1.aix5.3.ppc.rpm
+-rw-r-----    1 root     system       500843 Jan 22 17:45 libgomp-4.8.2-1.aix5.3.ppc.rpm
+-rw-r-----    1 root     system      1582858 Jan 22 17:45 libiconv-1.14-2.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       414917 Jan 22 17:45 libmpc-1.0.1-2.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      1282237 Jan 22 17:45 libpng-1.6.7-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      9628679 Jan 22 17:45 libstdc++-4.8.2-1.aix5.3.ppc.rpm
+-rw-r-----    1 root     system      2620214 Jan 22 17:45 libstdc++-devel-4.8.2-1.aix5.3.ppc.rpm
+-rw-r-----    1 root     system       801716 Jan 22 17:45 mpfr-3.1.2-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system     18117699 Jan 22 17:45 openssl-1.0.1e-2.aix5.1.ppc.rpm
+-rw-r-----    1 root     system        58496 Jan 22 17:45 pkg-config-0.28-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system     14065048 Jan 22 17:45 python-2.6.8-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      1664814 Jan 22 17:45 python-libs-2.6.8-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       819025 Jan 22 17:45 readline-6.2-5.aix5.1.ppc.rpm
+-rw-r-----    1 root     system        18655 Jan 22 17:45 renderproto-0.11.1-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       687649 Jan 22 17:45 sqlite-3.8.1-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      2621760 Jan 22 17:45 tcl-8.5.15-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system      2361520 Jan 22 17:45 tk-8.5.15-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       777612 Jan 22 17:45 tkinter-2.6.8-1.aix5.1.ppc.rpm
+-rw-r-----    1 root     system       203312 Jan 22 17:45 zlib-1.2.8-1.aix5.1.ppc.rpm
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh libgcc-4.8.2-1.aix5.3.ppc.rpm
+package libgcc-4.8.2-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh libffi-3.0.13-1.aix5.1.ppc.rpm
+package libffi-3.0.13-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh python-libs-2.6.8-1.aix5.1.ppc.rpm
+package python-libs-2.6.8-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh gettext-0.17-1.aix5.1.ppc.rpm --nodeps
+package gettext-0.17-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh libiconv-1.14-2.aix5.1.ppc.rpm
+package libiconv-1.14-2 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh glib2-2.38.2-1.aix5.1.ppc.rpm 
+package glib2-2.38.2-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh bash-4.2-12.aix5.1.ppc.rpm
+package bash-4.2-12 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh info-5.1-2.aix5.1.ppc.rpm
+package info-5.1-2 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh readline-6.2-5.aix5.1.ppc.rpm
+package readline-6.2-5 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh libpng-1.6.7-1.aix5.1.ppc.rpm 
+package libpng-1.6.7-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh freetype2-2.5.2-1.aix5.1.ppc.rpm
+package freetype2-2.5.2-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh fontconfig-2.10.2-1.aix5.1.ppc.rpm
+package fontconfig-2.10.2-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh libXrender-0.9.8-1.aix5.1.ppc.rpm --nodeps
+package libXrender-0.9.8-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh libXft-2.3.1-1.aix5.1.ppc.rpm --nodeps
+package libXft-2.3.1-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh tk-8.5.15-1.aix5.1.ppc.rpm --nodeps
+package tk-8.5.15-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh libstdc++-4.8.2-1.aix5.3.ppc.rpm
+package libstdc++-4.8.2-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh gmp-5.1.3-1.aix5.1.ppc.rpm
+package gmp-5.1.3-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh sqlite-3.8.1-1.aix5.1.ppc.rpm 
+package sqlite-3.8.1-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> rpm -ivh python-2.6.8-1.aix5.1.ppc.rpm
+package python-2.6.8-1 is already installed
+root@sitscfa:/tmp/ansible> 
+> exit
+----------------------------------------------
+end of log file write

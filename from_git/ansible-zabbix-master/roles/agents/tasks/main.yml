@@ -1,0 +1,46 @@
+
+- name: install zabbix-agent
+  yum: name={{item}} state=installed
+  with_items:
+    - zabbix-agent
+  tags: zabbix-agent
+
+
+- name: set config server 
+  lineinfile: dest=/etc/zabbix/zabbix_agentd.conf regexp="^Server=.*" insertafter="^# Server=" line=Server={{ zabbix_server }}
+  notify: restart zabbix-agent
+  tags: zabbix-agent
+
+- name: set config serveractive
+  lineinfile: dest=/etc/zabbix/zabbix_agentd.conf regexp="^ServerActive=.*" insertafter="^# ServerActive=" line=ServerActive={{ zabbix_server }}
+  notify: restart zabbix-agent
+  tags: zabbix-agent
+
+- name: set config Hostname
+  shell: sed -i "s/^Hostname=.*$/Hostname=`{{ hostname_cmd }}`/" /etc/zabbix/zabbix_agentd.conf
+  tags: zabbix-agent
+  #notify: restart zabbix-agent
+
+- name: copy
+  copy: src=zapache dest=/usr/local/bin/zabbix_check_apache owner=root group=root mode=0755
+  when: zabbix_check_apache is defined
+  tags: zabbix-agent
+  notify: restart zabbix-agent
+
+- name: copy
+  lineinfile: 
+    dest=/etc/zabbix/zabbix_agentd.conf 
+    regexp="^UserParameter=.*"  
+    insertafter="^# UserParameter=" 
+    line="UserParameter=apache[*],/usr/local/bin/zabbix_check_apache \\$1"
+  when: zabbix_check_apache is defined
+  tags: zabbix-agent
+  notify: restart zabbix-agent
+
+# EnableRemoteCommands=0
+- name: set  EnableRemoteCommands
+  lineinfile: dest=/etc/zabbix/zabbix_agentd.conf regexp="^EnableRemoteCommands=.*" insertafter="^# EnableRemoteCommands=" line=EnableRemoteCommands={{ zabbix_EnableRemoteCommands }}
+  when: zabbix_EnableRemoteCommands is defined
+  notify: restart zabbix-agent
+  tags: zabbix-agent
+

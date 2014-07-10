@@ -1,0 +1,49 @@
+
+- name: install zabbix-server
+  yum: name={{item}} enablerepo=epel state=installed
+  with_items:
+    - zabbix-server-mysql 
+    - zabbix-web-mysql 
+    - zabbix-web-japanese 
+    - zabbix-get
+    - MySQL-python
+  tags: zabbix-server
+
+- name: add zabbix dbuser
+  mysql_user: login_host=localhost login_user={{ dbroot }} login_password={{ dbpass }} name=zabbix password={{ zabbix_db_pass }} priv=zabbix.*:ALL 
+  tags: zabbix-server
+
+- name: add database
+  mysql_db:   login_host=localhost login_user={{ dbroot }} login_password={{ dbpass }} name=zabbix encoding=utf8
+  tags: zabbix-server
+
+- name: check tables 
+  shell: mysql -u{{ dbroot }} -p{{ dbpass }} zabbix -e"show tables"
+  register: show_tables
+  tags: zabbix-server
+
+- name: create tables
+  shell: |
+    mysql -u{{ dbroot }} -p{{ dbpass }} zabbix < /usr/share/doc/zabbix-server-mysql-2.0.?/schema.sql &&
+    mysql -u{{ dbroot }} -p{{ dbpass }} zabbix < /usr/share/doc/zabbix-server-mysql-2.0.?/images.sql &&
+    mysql -u{{ dbroot }} -p{{ dbpass }} zabbix < /usr/share/doc/zabbix-server-mysql-2.0.?/data.sql 
+  when: show_tables.stdout.find("user_history") == -1
+  tags: zabbix-server
+
+- name: start zabbix-server 
+  service: name=zabbix-server state=started enabled=yes
+
+
+- name: set DBPassword 
+  lineinfile: dest=/etc/zabbix/zabbix_server.conf regexp="^DBPassword=" insertafter="^# DBPassword=" line=DBPassword={{ zabbix_db_pass }}
+  tags: zabbix-server
+
+#- name: install ipa_font
+#  yum: name=ipa-pgothic-fonts state=installed
+#
+#- name: set ipa font 
+#  shell: |
+#    sed -i "s/dejavu/ipa-pgothic/" /usr/share/zabbix/include/defines.inc.php &&
+#    sed -i "s/DejaVuSans/ipagp/" /usr/share/zabbix/include/defines.inc.php
+#  tags: zabbix-server
+

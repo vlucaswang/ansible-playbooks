@@ -1,0 +1,34 @@
+---
+- name: save state with etckeeper
+  command: etckeeper commit "Commit by ansible, saving state."
+  ignore_errors: True
+  tags:
+    - etckeeper
+    - etckeeper-commit
+
+- name: repack git directory
+  command: git gc chdir=/etc
+  ignore_errors: True
+  tags:
+    - etckeeper
+    - etckeeper-gc
+
+- name: initialise etckeeper
+  shell: |
+    etckeeper init && 
+    etckeeper commit "frist commit" >/dev/null
+    creates=/etc/.git/config
+    chdir=/etc
+  tags: etckeeper
+
+- name: set cron.daily with etckeeper (CentOS 5)
+  shell: |
+    cat <<EOF >/etc/cron.daily/etckeeper.cron
+    #!/bin/sh
+    cd /etc/
+    etckeeper commit 'Daily Commit' >dev/null
+    EOF
+    chmod 755 /etc/cron.daily/etckeeper.cron
+    creates=/etc/cron.daily/etckeeper.cron
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 5
+  tags: etckeeper

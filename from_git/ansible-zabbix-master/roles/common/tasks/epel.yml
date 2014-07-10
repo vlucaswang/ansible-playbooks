@@ -1,0 +1,36 @@
+
+- name: get epel-repo rpm RHEL6
+  get_url: dest={{ ansible_cache_dir }}/epel-release.rpm  url=http://download.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 6
+  tags: epel
+
+- name: get epel-repo rpm RHEL5
+  get_url: dest={{ ansible_cache_dir }}/epel-release.rpm  url=http://download.fedoraproject.org/pub/epel/5/i386/epel-release-5-4.noarch.rpm
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 5
+  tags: epel
+
+- name: get RPM-GPG-KEY-EPEL-6 
+  get_url: dest={{ ansible_cache_dir }}/RPM-GPG-KEY-EPEL-6 url=http://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-6
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 6
+  register: get_key_epel6_result
+  tags: epel
+
+- name: import epel6 key
+  command: /bin/rpm --import {{ ansible_cache_dir }}/RPM-GPG-KEY-EPEL-6
+  when: get_key_epel6_result.changed
+  tags: epel
+
+- name: get RPM-GPG-KEY-EPEL-5 
+  get_url: dest={{ ansible_cache_dir }}/RPM-GPG-KEY-EPEL-5 url=http://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-5
+  when: ansible_os_family == 'RedHat' and ansible_distribution_version.split('.')[0]|int == 5
+  register: get_key_epel5_result
+  tags: epel
+
+- name: import epel5 key
+  command: /bin/rpm --import {{ ansible_cache_dir }}/RPM-GPG-KEY-EPEL-5
+  when: get_key_epel5_result.changed
+  tags: epel
+
+- name: install epel-repo rpm
+  yum: pkg={{ ansible_cache_dir }}/epel-release.rpm
+  tags: epel

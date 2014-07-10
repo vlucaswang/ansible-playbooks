@@ -1,0 +1,5 @@
+[rhel5x64]
+name=rhel5x64
+baseurl=http://10.16.8.57/repo/5/x86_64/
+enabled=1
+gpgcheck=0
