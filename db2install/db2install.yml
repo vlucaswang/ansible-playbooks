@@ -2,23 +2,24 @@
 - name: Installing IBM DB2
   hosts: all
   remote_user: root
-  
+
   vars_prompt:
-  - name: "db2_version"
-    prompt: "Enter db2 version to be installed"
-	
+    - name: "db2_version"
+      prompt: "Enter db2 version to be installed"
+      default: "9.7"
+
   tasks:
   - name: Sync the package
     synchronize: src=/opt/testrepo/db2/{{ db2_version }}/ dest=/tmp/db2install/
-	
+
   - name: Extract the package
-    command: /usr/bin/tar -xvf /tmp/db2install/*.tar.gz chdir=/tmp/db2install
-	
+    shell: /bin/tar xf /tmp/db2install/*.tar.gz chdir=/tmp/db2install
+
   - name: Install the package
     command: /tmp/db2install/server/db2_install -b /opt/ibm/{{ db2_version }}/db2 -p ESE chdir=/tmp/db2install/server
-	
+
   - name: Import the license
     command: /opt/ibm/{{ db2_version }}/db2/adm/db2licm -a /tmp/db2install/db2ese_c.lic chdir=/opt/ibm/{{ db2_version }}/db2/adm
 
   - name: Delete the files
-    shell: rm -rf /tmp/db2install
+    command: rm -rf /tmp/db2install
