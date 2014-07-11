@@ -36,16 +36,22 @@
   - name: Output to /etc/services
     lineinfile: dest=/etc/services line="db2inst{{  instance_number  }} {{  instance_port  }}/tcp"
 
-  - name: Create DB2 instance
-    command: /opt/ibm/db2/{{ db2_version }}/instance/db2icrt -a {{ instance_type }} -u db2fenc{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/{{ db2_version }}/instance
+  - name: Create DB2 instance for server
+#    command: /opt/ibm/db2/{{ db2_version }}/instance/db2icrt -a {{ instance_type }} -u db2fenc{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/{{ db2_version }}/instance
+    command: /opt/ibm/db2/instance/db2icrt -a {{ instance_type }} -u db2fenc{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/instance
+    when: instance_type == "server"
+
+  - name: Create DB2 instance for client
+#    command: /opt/ibm/db2/{{ db2_version }}/instance/db2icrt -a server -s {{ instance_type }} -u db2inst{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/{{ db2_version }}/instance
+    command: /opt/ibm/db2/instance/db2icrt -a server -s {{ instance_type }} -u db2inst{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/instance
+    when: instance_type == "client"
 
   - name: Set env profile
-    shell: db2set {{ item }}
-    user: db2inst{{  instance_number  }}
+    shell: su - db2inst{{  instance_number  }} -c "db2set {{ item }}"
     with_items:
       - DB2COMM=TCPIP
       - DB2CODEPAGE=1386
 
   - name: Set env profile cont
-    shell: db2 update dbm cfg using svcename db2inst{{  instance_number  }}
-    user: db2inst{{  instance_number  }}
+    shell: su - db2inst{{  instance_number  }} -c "db2 update dbm cfg using svcename db2inst{{  instance_number  }}"
+    when: instance_type == "server"

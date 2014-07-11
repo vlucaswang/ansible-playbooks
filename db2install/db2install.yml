@@ -28,4 +28,7 @@
     when: db2_version == "9.5" or db2_version == "9.7"
 
   - name: Delete the files
-    command: rm -rf /tmp/db2install
+    file: path=/tmp/db2install state=absent
+
+  - name: Delete log files
+    command: rm -rf /tmp/db2*log*
