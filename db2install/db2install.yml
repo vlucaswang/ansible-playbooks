@@ -15,11 +15,17 @@
   - name: Extract the package
     shell: /bin/tar xf /tmp/db2install/*.tar.gz chdir=/tmp/db2install
 
-  - name: Install the package
-    command: /tmp/db2install/server/db2_install -b /opt/ibm/{{ db2_version }}/db2 -p ESE chdir=/tmp/db2install/server
+  - name: Install the package for 9.X
+    command: /tmp/db2install/server/db2_install -b /opt/ibm/db2/{{ db2_version }} -p ESE chdir=/tmp/db2install/server
+    when: db2_version == "9.5" or db2_version == "9.7"
+
+  - name: Install the package for 10.X
+    command: /tmp/db2install/server/db2_install -b /opt/ibm/db2/{{ db2_version }} -p SERVER -f NOTSAMP chdir=/tmp/db2install/server
+    when: db2_version == "10.5" or db2_version == "10.1"
 
   - name: Import the license
-    command: /opt/ibm/{{ db2_version }}/db2/adm/db2licm -a /tmp/db2install/db2ese_c.lic chdir=/opt/ibm/{{ db2_version }}/db2/adm
+    command: /opt/ibm/db2/{{ db2_version }}/adm/db2licm -a /tmp/db2install/db2ese_c.lic chdir=/opt/ibm/db2/{{ db2_version }}/adm
+    when: db2_version == "9.5" or db2_version == "9.7"
 
   - name: Delete the files
     command: rm -rf /tmp/db2install

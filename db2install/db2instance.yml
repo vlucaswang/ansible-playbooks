@@ -37,7 +37,7 @@
     lineinfile: dest=/etc/services line="db2inst{{  instance_number  }} {{  instance_port  }}/tcp"
 
   - name: Create DB2 instance
-    command: /opt/ibm/{{ db2_version }}/db2/instance/db2icrt -a {{ instance_type }} -u db2fenc{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/{{ db2_version }}/db2/instance
+    command: /opt/ibm/db2/{{ db2_version }}/instance/db2icrt -a {{ instance_type }} -u db2fenc{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/{{ db2_version }}/instance
 
   - name: Set env profile
     shell: db2set {{ item }}
