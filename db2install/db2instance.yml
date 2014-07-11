@@ -1,0 +1,51 @@
+---
+- name: Creating IBM DB2 Instance
+  hosts: all
+  remote_user: root
+
+  vars_prompt:
+  - name: "db2_version"
+    prompt: "Enter db2 version to be installed"
+    default: "9.7"
+
+  - name: "instance_number"
+    prompt: "Enter Xth of instance"
+    default: "1"
+
+  - name: "instance_type"
+    prompt: "Enter instance type to be created"
+    default: "server"    
+
+  - name: "instance_port"
+    prompt: "Enter port of instance to be created"
+    default: "60000"
+
+  tasks:
+  - name: Create DB2 groups
+    group: name={{ item }} state=present
+    with_items: 
+      - db2iadm{{  instance_number  }}
+      - db2fadm{{  instance_number  }}
+
+  - name: Create DB2 users
+    user: name={{ item.name }} groups={{ item.groups }} password=$1$0jWvxY1x$7Usd6kAbhD8DN8.2kupmi/  generate_ssh_key=yes state=present
+    with_items:
+      - { name: 'db2inst{{  instance_number  }}', groups: 'db2iadm{{  instance_number  }}' }
+      - { name: 'db2fenc{{  instance_number  }}', groups: 'db2fadm{{  instance_number  }}' }
+
+  - name: Output to /etc/services
+    lineinfile: dest=/etc/services line="db2inst{{  instance_number  }} {{  instance_port  }}/tcp"
+
+  - name: Create DB2 instance
+    command: /opt/ibm/{{ db2_version }}/db2/instance/db2icrt -a {{ instance_type }} -u db2fenc{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/{{ db2_version }}/db2/instance
+
+  - name: Set env profile
+    shell: db2set {{ item }}
+    user: db2inst{{  instance_number  }}
+    with_items:
+      - DB2COMM=TCPIP
+      - DB2CODEPAGE=1386
+
+  - name: Set env profile cont
+    shell: db2 update dbm cfg using svcename db2inst{{  instance_number  }}
+    user: db2inst{{  instance_number  }}
