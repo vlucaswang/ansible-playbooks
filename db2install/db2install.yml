@@ -11,6 +11,7 @@
   tasks:
   - name: Set pre kernel parameter
     sysctl: name="kernel.randomize_va_space" value="0"
+    when: db2_version == "9.5" or db2_version == "9.7"
 
   - name: Sync the package
     synchronize: src=/opt/testrepo/db2/{{ db2_version }}/ dest=/tmp/db2install/
