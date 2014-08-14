@@ -1,5 +1,5 @@
 *.rpm
 *.tar
 *.bz
-
 install_aix53
+.DS_Store
