@@ -14,7 +14,7 @@
 
   - name: "instance_type"
     prompt: "Enter instance type to be created"
-    default: "server"    
+    default: "server"
 
   - name: "instance_port"
     prompt: "Enter port of instance to be created"
@@ -23,7 +23,7 @@
   tasks:
   - name: Create DB2 groups
     group: name={{ item }} state=present
-    with_items: 
+    with_items:
       - db2iadm{{  instance_number  }}
       - db2fadm{{  instance_number  }}
 
@@ -37,13 +37,11 @@
     lineinfile: dest=/etc/services line="db2inst{{  instance_number  }} {{  instance_port  }}/tcp"
 
   - name: Create DB2 instance for server
-#    command: /opt/ibm/db2/{{ db2_version }}/instance/db2icrt -a {{ instance_type }} -u db2fenc{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/{{ db2_version }}/instance
-    command: /opt/ibm/db2/instance/db2icrt -a {{ instance_type }} -u db2fenc{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/instance
+    command: /opt/ibm/db2/V{{ db2_version }}/instance/db2icrt -a {{ instance_type }} -u db2fenc{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/V{{ db2_version }}/instance
     when: instance_type == "server"
 
   - name: Create DB2 instance for client
-#    command: /opt/ibm/db2/{{ db2_version }}/instance/db2icrt -a server -s {{ instance_type }} -u db2inst{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/{{ db2_version }}/instance
-    command: /opt/ibm/db2/instance/db2icrt -a server -s {{ instance_type }} -u db2inst{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/instance
+    command: /opt/ibm/db2/V{{ db2_version }}/instance/db2icrt -a server -s {{ instance_type }} -u db2inst{{  instance_number  }} db2inst{{  instance_number  }} chdir=/opt/ibm/db2/V{{ db2_version }}/instance
     when: instance_type == "client"
 
   - name: Set env profile
