@@ -1,0 +1,117 @@
+---
+- name: Add remote elklog server to syslog.conf
+  hosts: all
+  remote_user: root
+
+  tasks:
+  - name: Add lv
+    lvol: vg=rootvg lv={{ item.lv }} size={{ item.size }}
+    with_items:
+      - { lv: 'cupslv', size: '100g' }
+      - { lv: 'cdrculv', size: '10g' }
+      - { lv: 'crmlv', size: '320g' }
+      - { lv: 'scmdmlv', size: '5g' }
+      - { lv: 'jylv', size: '5g' }
+      - { lv: 'sclmlv', size: '10g' }
+      - { lv: 'sclmllv', size: '20g' }
+      - { lv: 'scfundlv', size: '50g' }
+      - { lv: 'scmslv', size: '2g' }
+      - { lv: 'jalv', size: '50g' }
+      - { lv: 'scdwmonlv', size: '2g' }
+      - { lv: 'ftpsstalv', size: '100g' }
+      - { lv: 'datalv', size: '10g' }
+      - { lv: 'pblv', size: '50g' }
+      - { lv: 'ftpdrlv', size: '400g' }
+
+  - name: Make filesystem
+    filesystem: fstype=ext3 dev=/dev/rootvg/{{ item }}
+    with_items:
+      - cupslv
+      - cdrculv
+      - crmlv
+      - scmdmlv
+      - jylv
+      - sclmlv
+      - sclmllv
+      - scfundlv
+      - scmslv
+      - jalv
+      - scdwmonlv
+      - ftpsstalv
+      - datalv
+      - pblv
+      - ftpdrlv
+
+  - name: Mount lv
+    mount: name={{ item.name }} src=/dev/rootvg/{{ item.src }} fstype=ext3 state=mounted
+    with_items:
+      - { name: '/home/cupsftp', src: 'cupslv' }
+      - { name: '/home/cdrcuftp/gmt/dz', src: 'cdrculv' }
+      - { name: '/home/crmftp', src: 'crmlv' }
+      - { name: '/home/scmdm', src: 'scmdmlv' }
+      - { name: '/home/sccin', src: 'jylv' }
+      - { name: '/home/sclmftp', src: 'sclmlv' }
+      - { name: '/home/sclmftp1', src: 'sclmllv' }
+      - { name: '/home/scfund', src: 'scfundlv' }
+      - { name: '/home/scmsftp', src: 'scmslv' }
+      - { name: '/home/jaftp', src: 'jalv' }
+      - { name: '/home/scdwmon', src: 'scdwmonlv' }
+      - { name: '/home/pbftp', src: 'pblv' }
+      - { name: '/home/ftpdr', src: 'ftpdrlv' }
+      - { name: '/data', src: 'datalv' }
+      - { name: '/data/ftpssta', src: 'ftpsstalv' }
+
+  - name: Make folders
+    file: path={{ item.path }} owner={{ item.owner }} group={{ item.group }} mode=0755 state=directory
+    with_items:
+      - { path: '/home/cupsftp', owner: 'cupsftp', group: 'cupsftp' }
+      - { path: '/home/cdrcuftp', owner: 'cdrcuftp', group: 'cdrcuftp' }
+      - { path: '/home/cdrcuftp/gmt/dz', owner: 'cdrcuftp', group: 'cdrcuftp' }
+      - { path: '/home/cdrcuftp/gmt/dz', owner: 'cdrcuftp', group: 'cdrcuftp' }
+      - { path: '/home/crmftp', owner: 'crmftp', group: 'crmftp' }
+      - { path: '/home/crmftp/INPUT', owner: 'crmftp', group: 'crmftp' }
+      - { path: '/home/crmftp/OK', owner: 'crmftp', group: 'crmftp' }
+      - { path: '/home/crmftp/CIF', owner: 'crmftp', group: 'crmftp' }
+      - { path: '/home/crmftp/OCRM/INPUT', owner: 'crmftp', group: 'crmftp' }
+      - { path: '/home/crmftp/OCRM/OK', owner: 'crmftp', group: 'crmftp' }
+      - { path: '/home/scmdm', owner: 'scmdm', group: 'scmdm' }
+      - { path: '/home/sccin', owner: 'jyftp', group: 'jyftp' }
+      - { path: '/home/sclmftp', owner: 'sclmftp', group: 'sclmftp' }
+      - { path: '/home/sclmftp/output', owner: 'sclmftp', group: 'sclmftp' }
+      - { path: '/home/sclmftp/ok', owner: 'sclmftp', group: 'sclmftp' }
+      - { path: '/home/sclmftp1', owner: 'sclmftp1', group: 'sclmftp1' }
+      - { path: '/home/sclmftp1/SCLMDZ', owner: 'sclmftp1', group: 'sclmftp1' }
+      - { path: '/home/sclmftp1/SCLMPK', owner: 'sclmftp1', group: 'sclmftp1' }
+#      - { path: '/home/sclmftp1/SCLMCX', owner: 'sclmftp1', group: 'sclmftp1' }
+      - { path: '/home/scfund', owner: 'scfund', group: 'scfund' }
+      - { path: '/home/scmsftp', owner: 'scmsftp', group: 'scmsftp' }
+      - { path: '/home/scmsftp/SCMS', owner: 'scmsftp', group: 'scmsftp' }
+      - { path: '/home/jaftp', owner: 'jaftp', group: 'jaftp' }
+      - { path: '/home/scdwmon', owner: 'scdwmon', group: 'scdwmon' }
+      - { path: '/home/pbftp', owner: 'pbftp', group: 'pbftp' }
+      - { path: '/home/pbftp/SC6000', owner: 'pbftp', group: 'pbftp' }
+      - { path: '/home/pbftp/SCODS_EXP', owner: 'pbftp', group: 'pbftp' }
+      - { path: '/home/pbftp/FILEOUT', owner: 'pbftp', group: 'pbftp' }
+      - { path: '/home/pbftp/FILEOUT/SCFA', owner: 'pbftp', group: 'pbftp' }
+      - { path: '/home/ftpdr', owner: 'ftpdr', group: 'ftpdr' }
+      - { path: '/home/ftpdr/odstofee/edw', owner: 'ftpdr', group: 'ftpdr' }
+      - { path: '/home/ftpdr/priv/ln/download', owner: 'ftpdr', group: 'ftpdr' }
+      - { path: '/home/ftpdr/priv/ln/upload', owner: 'ftpdr', group: 'ftpdr' }
+      - { path: '/home/ftpdr/eall/acteput', owner: 'ftpdr', group: 'ftpdr' }
+      - { path: '/home/ftpdr/eall/lacteput', owner: 'ftpdr', group: 'ftpdr' }
+      - { path: '/home/ftpdr/zscadms/lactzput', owner: 'ftpdr', group: 'ftpdr' }
+      - { path: '/data', owner: 'root', group: 'root' }
+      - { path: '/data/ftpssta', owner: 'ftpssta', group: 'ftpssta' }
+      - { path: '/data/ftpssta/PB', owner: 'ftpssta', group: 'ftpssta' }
+      - { path: '/data/ftpssta/ICCARD', owner: 'ftpssta', group: 'ftpssta' }
+      - { path: '/data/ftpssta/SCMS', owner: 'ftpssta', group: 'ftpssta' }
+
+  - name: Make soft links
+    file: src={{ item.src }} dest={{ item.dest }} state=link
+    with_items:
+      - { src: '/home/sccin', dest: '/sccin' }
+      - { src: '/home/jaftp', dest: '/data/jaftp' }
+      - { src: '/home/ftpdr/eall/acteput', dest: '/home/eall/@ACTDT@/batch/eput' }
+      - { src: '/home/ftpdr/eall/lacteput', dest: '/home/eall/@LACTDT@/batch/eput' }
+    tags:
+      - ln

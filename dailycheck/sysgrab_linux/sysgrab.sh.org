@@ -310,7 +310,7 @@ else
 	then
 		TAR_FILE=${HOSTNAME}_`date +%Y-%m-%d-%H.%M.%S`_${OS}_sysgrab_V${VERSION}_lite_CC"${CC_ID}".tar
 	else
-		TAR_FILE=${HOSTNAME}_`echo $(ifconfig | awk '/inet addr/{print substr($2,6)}' | grep -v 127.0) | sed "s/ /_/g"`_`date +%Y-%m-%d-%H.%M.%S`_${OS}_`uname -r`.tar
+		TAR_FILE=${HOSTNAME}_`date +%Y-%m-%d-%H.%M.%S`_${OS}_sysgrab_V${VERSION}_full_CC"${CC_ID}".tar
 	fi
 fi
 

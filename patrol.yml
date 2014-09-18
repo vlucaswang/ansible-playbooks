@@ -1,0 +1,35 @@
+---
+- name: Add remote elklog server to syslog.conf
+  hosts: all
+  remote_user: root
+
+  tasks:
+  - name: add group
+    group: name=patrol gid=890
+
+  - name: add user
+    user: name=patrol uid=890 group=patrol
+
+  - name: change pass of user
+    shell: echo scnx$123 | passwd --stdin patrol
+
+  - name: add lv
+    lvol: vg=rootvg lv=patrollv size=2g
+
+  - name: create ext3 fs
+    filesystem: fstype=ext3 dev=/dev/rootvg/patrollv
+
+  - name: mount fs
+    mount: name=/patrol src=/dev/rootvg/patrollv fstype=ext3 state=mounted
+
+  - name: move files
+    shell: cp -Pa /home/patrol/. /patrol/
+
+  - name: chown
+    shell: chown -R patrol.patrol /patrol
+
+  - name: rm
+    shell: rm -rf /home/patrol
+
+  - name: create soft link
+    file: src=/patrol dest=/home/patrol state=link

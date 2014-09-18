@@ -4,9 +4,10 @@
   remote_user: root
 
   vars_prompt:
-    - name: "db2_version"
-      prompt: "Enter db2 version to be installed"
-      default: "9.7"
+  - name: "db2_version"
+    prompt: "Enter db2 version to be installed"
+    default: "9.7"
+    private: no
 
   tasks:
   - name: Sync the package

@@ -3,14 +3,14 @@
   hosts: all
   remote_user: root
   vars:
-    jdk_rpm: /opt/jdk-1_5_0_22-linux-amd64.bin
+    jdk_rpm: /opt/testrepo/jdk-1_5_0_22-linux-amd64.bin
 
   tasks:
   - name: Remove GCJ
     yum: pkg=java-1.4.2-gcj-compat.x86_64 state=removed
 
   - name: Copy the install bin file
-    copy: src={{ jdk_rpm }} dest=/opt/java mode=755
+    copy: src={{ jdk_rpm }} dest=/opt/ mode=755
 
 #  - name: Install JDK 1.5
 #    shell: yum -y --nogpgcheck localinstall {{ jdk_rpm }}
@@ -18,10 +18,10 @@
   - name: Add JDK env para
     lineinfile: dest={{ item.dest }} state=present line={{ item.line }}
     with_items:
-      - { dest: '/etc/profile', line: 'export JAVA_HOME=/opt/java/jdk1.5.0_22' }
-      - { dest: '/etc/profile', line: 'export JRE_HOME=/opt/java/jdk1.5.0_22/jre' }
-      - { dest: '/etc/profile', line: 'export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME/bin' }
-      - { dest: '/etc/profile', line: 'export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar:$JRE_HOME/lib'}
+      - { dest: '/home/stk/.base_profile', line: 'export JAVA_HOME=/opt/java1.5/jdk1.5.0_22' }
+      - { dest: '/home/stk/.base_profile', line: 'export JRE_HOME=/opt/java1.5/jdk1.5.0_22/jre' }
+      - { dest: '/home/stk/.base_profile', line: 'export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME/bin' }
+      - { dest: '/home/stk/.base_profile', line: 'export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar:$JRE_HOME/lib'}
 
   - name: Enable JDK env para
     shell: source /etc/profile

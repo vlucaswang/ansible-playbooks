@@ -7,18 +7,22 @@
   - name: "db2_version"
     prompt: "Enter db2 version to be installed"
     default: "9.7"
+    private: no
 
   - name: "instance_number"
     prompt: "Enter Xth of instance"
     default: "1"
+    private: no
 
   - name: "instance_type"
     prompt: "Enter instance type to be created"
     default: "server"
+    private: no
 
   - name: "instance_port"
     prompt: "Enter port of instance to be created"
     default: "60000"
+    private: no
 
   tasks:
   - name: Create DB2 groups
