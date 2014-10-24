@@ -21,7 +21,7 @@
 
   - name: "instance_port"
     prompt: "Enter port of instance to be created"
-    default: "60000"
+    default: "50000"
     private: no
 
   tasks:

@@ -1,6 +1,6 @@
 ---
 - name: Daily check on servers.
-  hosts: ansible-master
+  hosts: all
   remote_user: root
   tasks:
 #  - name: Install Rsync pkg

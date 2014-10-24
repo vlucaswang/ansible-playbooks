@@ -39,4 +39,5 @@
       - compat-libstdc++-33.i686
       - libaio
       - libaio.i686
+      - rdma
     when: ansible_architecture == "x86_64"

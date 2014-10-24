@@ -1,0 +1,44 @@
+---
+
+- name: Add the OS specific varibles
+  include_vars: "{{ ansible_os_family }}.yml"
+
+- shell: "export evil='() { :;}; echo vulnerable'; bash -c echo;"
+  register: result
+
+- fail:
+    msg="Not Vulnerable"
+  when: result.stdout != 'vulnerable'
+
+- name: Copy the required packages in Redhat 5 derivatives
+  copy: src=bash_fix/rpms/{{ ansible_os_family }}/{{ ansible_distribution_major_version }}/bash-3.2-33.el5_11.4.{{ ansible_architecture }}.rpm dest=/data/
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '5'
+
+- name: Install the required packages in Redhat 5 derivatives
+  shell: rpm -U /data/bash-3.2-33.el5_11.4.{{ ansible_architecture }}.rpm
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '5'
+
+- name: Copy the required packages in Redhat 6 derivatives
+  copy: src=bash_fix/rpms/{{ ansible_os_family }}/{{ ansible_distribution_major_version }}/bash-4.1.2-15.el6_5.2.{{ ansible_architecture }}.rpm dest=/data/
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '6'
+
+- name: Install the required packages in Redhat 6 derivatives
+  shell: rpm -U /data/bash-4.1.2-15.el6_5.2.{{ ansible_architecture }}.rpm
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '6'
+
+- name: Install the required  packages in Suse derivatives
+  copy: src=bash_fix/rpms/{{ ansible_os_family }}/{{ ansible_distribution_major_version }}/{{ ansible_distribution_release }}/{{ item }} dest=/data/
+  with_items: bash_pkgs
+  when: ansible_os_family == 'Suse' and ansible_distribution_major_version == '11'
+
+- name: Install the required  packages in Suse derivatives
+  shell: rpm -U /data/{{ item }}
+  with_items: bash_pkgs
+  when: ansible_os_family == 'Suse' and ansible_distribution_major_version == '11'
+
+- shell: "export evil='() { :;}; echo vulnerable'; bash -c echo;"
+  register: result
+
+- fail:
+    msg="Still Vulnerable After Applying Patch"
+  when: result.stdout == 'vulnerable'

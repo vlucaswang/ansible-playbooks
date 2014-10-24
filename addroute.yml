@@ -1,0 +1,35 @@
+---
+- name: Add route info to 10.0.192.0 Servers
+  hosts: all
+  remote_user: root
+  gather_facts: no
+  tasks:
+  - name: Run route add cmd
+    shell: route add {{ item }}
+    with_items:
+    - "-net 10.30.8.0/22 gw 10.0.192.80"
+    - "-net 10.30.4.0/22 gw 10.0.192.80"
+    - "-net 10.0.193.0/24 gw 10.0.192.29"
+    - "-net 10.0.184.0/22 gw 10.0.192.29"
+    - "-net 10.16.8.0/22 gw 10.0.192.29"
+    - "-net 10.16.0.0/22 gw 10.0.192.29"
+    - "-host 10.129.3.84 gw 10.0.192.29"
+    - "-net 10.0.224.0/24 gw 10.0.192.29"
+    - "-net 10.0.190.0/23 gw 10.0.192.29"
+    tags: 
+    - cmd
+
+  - name: Add route info to rc.local profile
+    lineinfile: dest=/etc/rc.local line={{ item }} state=present
+    with_items:
+    - "'route add -net 10.30.8.0/22 gw 10.0.192.80'"
+    - "'route add -net 10.30.4.0/22 gw 10.0.192.80'"
+    - "'route add -net 10.0.193.0/24 gw 10.0.192.29'"
+    - "'route add -net 10.0.184.0/22 gw 10.0.192.29'"
+    - "'route add -net 10.16.8.0/22 gw 10.0.192.29'"
+    - "'route add -net 10.16.0.0/22 gw 10.0.192.29'"
+    - "'route add -host 10.129.3.84 gw 10.0.192.29'"
+    - "'route add -net 10.0.224.0/24 gw 10.0.192.29'"
+    - "'route add -net 10.0.190.0/23 gw 10.0.192.29'"
+    tags:
+    - rclocal
