@@ -42,27 +42,31 @@ def hostinfo(name):
 
     print json.dumps(vars, indent=4)
 
-def grouplist():
+def grouplist(name):
     inventory ={}
     inventory['local'] = [ '127.0.0.1' ]
     vserver = vcenter_connect(server_fqdn,server_username,server_password)
-    vms_in_vserver = vserver.get_registered_vms(status='poweredOn')
+ #   vms_in_vserver = vserver.get_registered_vms(status='poweredOn')
+    vms_in_vserver = vserver.get_registered_vms(cluster=name, status='poweredOn')
     inventory["no_group"] = {
         'hosts' : []
     }
 
     for vsphere_vm in vms_in_vserver:
         virtual_machine = vserver.get_vm_by_path(vsphere_vm)
-        virtual_machine_name = virtual_machine.get_property('name')
-        inventory['no_group']['hosts'].append(virtual_machine_name)
+#        virtual_machine_name = virtual_machine.get_property('name')
+        virtual_machine_ip = virtual_machine.get_property('ip_address')
+        inventory['no_group']['hosts'].append(virtual_machine_ip)
 
     print json.dumps(inventory, indent=4)
 
 if __name__ == '__main__':
-    if len(sys.argv) == 2 and (sys.argv[1] == '--list'):
-        grouplist()
+#    if len(sys.argv) == 2 and (sys.argv[1] == '--list'):
+#        grouplist()
+    if len(sys.argv) == 3 and (sys.argv[1] == '--list'):
+        grouplist(sys.argv[2])
     elif len(sys.argv) == 3 and (sys.argv[1] == '--host'):
         hostinfo(sys.argv[2])
     else:
-        print "Usage: %s --list or --host <hostname>" % sys.argv[0]
+        print "Usage: %s --list <clustername> or --host <hostname>" % sys.argv[0]
         sys.exit(1)
