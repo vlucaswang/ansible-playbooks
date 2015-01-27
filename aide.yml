@@ -1,0 +1,33 @@
+---
+- name: install aide
+  hosts: all
+  remote_user: root
+
+  tasks:
+  - name: sync yum repo
+    synchronize: src=/opt/testrepo/rhel5x64.repo/ dest=/etc/yum.repos.d
+
+  - name: install aide packge
+    yum: name=aide state=latest
+
+  - name: init database
+    shell: /usr/sbin/aide -c /etc/aide.conf --init
+
+  - name:
+    shell: cp /var/lib/aide/aide.db.new.gz /var/lib/aide/adie.db.gz
+
+  - name: mkdir new ckeck file
+    shell: mkdir /aide_check_file
+
+  - name: test
+    shell: cp /etc/passwd /aide_check_file
+
+  - name: check aide database
+    shell: /usr/sbin/aide -c /etc/aide.conf --check
+
+# - name: update database
+#    shell: /usr/sbin/aide -c /etc/aide.conf --update
+
+#  - name: send mail
+#    shell: /usr/sbin/aide -c /etc/aide.conf --check |mail -s "test aide" root@localhost
+

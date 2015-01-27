@@ -1,0 +1,37 @@
+---
+- name: Fix linux safe status
+  hosts: all
+  remote_user: root
+  gather_facts: no
+
+  tasks:
+  - name: Fix login.defs
+    lineinfile: dest=/etc/login.defs regexp='^PASS_MIN_LEN' line='PASS_MIN_LEN 8' state=present
+
+  - name: fix pam sshd
+    lineinfile: dest=/etc/pam.d/sshd insertbefore={{ item.insert }} line={{ item.line }} state=present
+    with_items:
+    - { insert: '^auth', line: '"auth       required     pam_tally2.so onerr=fail deny=3 even_deny_root unlock_time=1200 root_unlock_time=60"' }
+    - { insert: '^account', line: '"account    required     pam_tally2.so"' }
+
+  - name: fix sshd_config
+    lineinfile: dest=/etc/ssh/sshd_config regexp={{ item.regexp }} line={{ item.line }} state=present
+    with_items:
+    - { regexp: '^PermitEmptyPasswords', line: '"PermitEmptyPasswords no"' }
+    - { regexp: '^PasswordAuthentication', line: '"PasswordAuthentication no"' }
+    - { regexp: '^ChallengeResponseAuthentication', line: '"ChallengeResponseAuthentication yes"' }
+    notify:
+    - reload sshd
+
+  - name: fix xinetd.d permission
+    shell: chmod 600 /etc/xinetd.d/*
+
+  - name: fix messages permission
+    file: path=/var/log/messages owner=root group=root mode=0400
+
+  - name: fix profile TMOUT
+    lineinfile: dest=/etc/profile regexp='^TMOUT' line='TMOUT=300'
+
+  handlers:
+  - name: reload sshd
+    service: name=sshd state=reloaded

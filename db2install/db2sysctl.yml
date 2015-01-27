@@ -46,3 +46,36 @@
       - { name: "kernel.msgmni", value: "32768" }
     tags:
       - 32G
+
+  - name: Add memory-related sysctl parameter
+    sysctl: name={{ item.name }} value={{ item.value }}
+    with_items:
+      - { name: "kernel.shmmni", value: "16384" }
+      - { name: "kernel.sem", value: '"250 256000 32 16384"' }
+      - { name: "kernel.shmmax", value: "61848000000" }
+      - { name: "kernel.shmall", value: "6710000" }
+      - { name: "kernel.msgmni", value: "65536" }
+    tags:
+      - 64G
+
+  - name: Add memory-related sysctl parameter
+    sysctl: name={{ item.name }} value={{ item.value }}
+    with_items:
+      - { name: "kernel.shmmni", value: "32768" }
+      - { name: "kernel.sem", value: '"250 256000 32 32768"' }
+      - { name: "kernel.shmmax", value: "123696000000" }
+      - { name: "kernel.shmall", value: "6710000" }
+      - { name: "kernel.msgmni", value: "131072" }
+    tags:
+      - 128G
+
+  - name: Add memory-related sysctl parameter
+    sysctl: name={{ item.name }} value={{ item.value }}
+    with_items:
+      - { name: "kernel.shmmni", value: "65536" }
+      - { name: "kernel.sem", value: '"250 256000 32 65536"' }
+      - { name: "kernel.shmmax", value: "247392000000" }
+      - { name: "kernel.shmall", value: "6710000" }
+      - { name: "kernel.msgmni", value: "262144" }
+    tags:
+      - 256G

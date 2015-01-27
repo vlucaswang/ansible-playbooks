@@ -25,11 +25,11 @@
 #    with_items: repos.stdout_lines
 
   - name: Copy the repo conf
-    copy: src=rhel6x64.repo dest=/etc/yum.repos.d/
+    copy: src=rhel5x64.repo dest=/etc/yum.repos.d/
     when: ansible_architecture == "x86_64"
 
   - name: Install the pkg
-    yum: pkg={{ item }} state=present enablerepo=rhel6x64
+    yum: pkg={{ item }} state=present enablerepo=rhel5x64
     with_items:
       - pam
       - pam.i686
@@ -39,19 +39,4 @@
       - compat-libstdc++-33.i686
       - libaio
       - libaio.i686
-      - rdma
-      - ksh
-      - binutils
-      - unixODBC
-      - unixODBC-devel
-      - compat-libcap1
-      - glibc-devel
-      - glibc-devel.i686
-      - libgcc
-      - libgcc.i686
-      - libstdc++-devel
-      - libstdc++-devel.i686
-      - libaio-devel
-      - libaio-devel.i686
-      - make
     when: ansible_architecture == "x86_64"

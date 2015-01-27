@@ -23,7 +23,7 @@
 #  - name: Disable other repos2
 #    lineinfile: dest={{ item }} regexp=^enabled= line=enabled=0
 #    with_items: repos.stdout_lines
-  
+
   - name: Copy the repo conf
     copy: src=rhel5x64.repo dest=/etc/yum.repos.d/
     when: ansible_architecture == "x86_64"

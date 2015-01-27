@@ -18,10 +18,10 @@
   - name: Add JDK env para
     lineinfile: dest={{ item.dest }} state=present line={{ item.line }}
     with_items:
-      - { dest: '/home/stk/.base_profile', line: 'export JAVA_HOME=/opt/java1.5/jdk1.5.0_22' }
-      - { dest: '/home/stk/.base_profile', line: 'export JRE_HOME=/opt/java1.5/jdk1.5.0_22/jre' }
-      - { dest: '/home/stk/.base_profile', line: 'export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME/bin' }
-      - { dest: '/home/stk/.base_profile', line: 'export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar:$JRE_HOME/lib'}
+      - { dest: '/etc/profile', line: 'export JAVA_HOME=/opt/java/jdk1.5.0_22' }
+      - { dest: '/etc/profile', line: 'export JRE_HOME=/opt/java/jdk1.5.0_22/jre' }
+      - { dest: '/etc/profile', line: 'export PATH=$PATH:$JAVA_HOME/bin:$JRE_HOME/bin' }
+      - { dest: '/etc/profile', line: 'export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar:$JRE_HOME/lib' }
 
   - name: Enable JDK env para
     shell: source /etc/profile

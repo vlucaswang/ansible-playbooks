@@ -1,0 +1,33 @@
+---
+- name: Add user ip time to bash/ksh history
+  hosts: all
+  remote_user: root
+  gather_facts: no
+  tasks:
+  - name: Add hist.sh global profile
+    copy: src=/root/ansible/hist.sh dest=/etc/profile.d/hist.sh owner=root group=root mode=0644
+    tags: 
+    - bash
+
+  - name: Source hist.sh profile
+    shell: source /etc/profile.d/hist.sh
+    tags:
+    - bash
+
+  - name: Add chattr to history files
+    shell: find / -maxdepth 4 -name '*sh_history' -print | xargs chattr +a
+    tags:
+    - bash
+    - ksh
+
+  - name: Find ksh user path
+    shell: grep ksh /etc/passwd | cut -d':' -f6
+    register: kshpath
+    tags:
+    - ksh
+    
+  - name: Add .kshrc profile
+    copy: src=/root/ansible/.kshrc dest={{ item }}/.kshrc owner=root group=root mode=0644
+    with_items: kshpath.stdout_lines
+    tags:
+    - ksh

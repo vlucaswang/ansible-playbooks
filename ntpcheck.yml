@@ -1,0 +1,29 @@
+---
+- name: Check NTP status
+  hosts: all
+  remote_user: root
+  tasks:
+  - name: Check ntpd service status
+    shell: /etc/init.d/ntpd status
+    when: ansible_distribution == "RedHat"
+
+  - name: Check ntpd service status
+    shell: /etc/init.d/ntp status
+    when: ansible_distribution == "SuSE"
+
+  - name: Check ntpd service on boot
+    shell: chkconfig ntpd --list
+    when: ansible_distribution == "RedHat"
+
+  - name: Check ntpd service on boot
+    shell: chkconfig ntp --list
+    when: ansible_distribution == "SuSE"
+
+  - name: Check ntp.conf
+    shell: grep 10.128.128 /etc/ntp.conf
+
+  - name: Check ntpdate in crontab
+    shell: crontab -l | grep ntpdate
+
+  - name: Check vmware-toolbox timesync
+    shell: vmware-toolbox-cmd timesync status

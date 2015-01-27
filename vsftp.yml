@@ -31,12 +31,5 @@
   - name: Install the pkg
     yum: pkg={{ item }} state=present enablerepo=rhel6x64
     with_items:
-      - pam
-      - pam.i686
-      - libstdc++
-      - libstdc++.i686
-      - compat-libstdc++-33
-      - compat-libstdc++-33.i686
-      - libaio
-      - libaio.i686
+      - vsftpd
     when: ansible_architecture == "x86_64"

@@ -18,6 +18,7 @@
 
   - name: Disable ASLR kernel feature
     sysctl: name=kernel.randomize_va_space value=0
+    ignore_errors: yes
     when: db2_version == "9.5" or db2_version == "9.7"
 
   - name: Install the package for 9.X

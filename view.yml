@@ -5,16 +5,16 @@
 
   tasks:
   - name: Add user view
-    user: name=view groups=db2iadm1 append=yes
+    user: name=imoia  append=yes
 
   - name: Change view pass
-    shell: echo sysSCRCU | passwd --stdin view
+    shell: echo imoia123 | passwd --stdin imoia
 
   - name: Add db2 env
     lineinfile: dest=/home/view/.bash_profile line="if [ -f /home/db2inst1/sqllib/db2profile ]; then"
 
   - name: Add db2 env
-    lineinfile: dest=/home/view/.bash_profile line=". /home/db2inst1/sqllib/db2profile"
+   lineinfile: dest=/home/view/.bash_profile line=". /home/db2inst1/sqllib/db2profile"
 
   - name: Add db2 env
     shell: echo fi >> /home/view/.bash_profile

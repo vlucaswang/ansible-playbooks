@@ -1,0 +1,41 @@
+---
+- name: Fix NTP status
+  hosts: all
+  remote_user: root
+
+  tasks:
+  - name: Disable ntpd for a while for RHEL
+    service: name=ntpd state=stopped enabled=yes
+    when: ansible_distribution == "RedHat"
+
+  - name: Disable ntpd for a while for SuSE
+    service: name=ntp state=stopped enabled=yes
+    when: ansible_distribution == "SuSE"
+
+  - name: Fix time status
+    shell: ntpdate 10.128.128.115
+
+  - name: Fix ntp.conf
+    replace: dest=/etc/ntp.conf regexp="^server " replace="" backup=yes
+
+  - name: Fix ntp.conf
+    lineinfile: dest=/etc/ntp.conf insertafter="^# Please consider" line={{ item }} state=present
+    with_items:
+      - "'server 10.128.128.115'"
+      - "'server 10.128.128.6'"
+
+
+  - name: Fix ntpd service status for RHEL
+    service: name=ntpd state=restarted enabled=yes
+    when: ansible_distribution == "RedHat"
+
+  - name: Fix ntpd service status for SuSE
+    service: name=ntp state=restarted enabled=yes
+    when: ansible_distribution == "SuSE"
+
+#  - name: Fix ntpdate in crontab
+#    shell: crontab -l | grep ntpdate
+
+  - name: Fix vmware-toolbox timesync
+    shell: vmware-toolbox-cmd timesync disable
+    ignore_errors: yes
