@@ -1,1 +1,1 @@
-Ansible playbooks for SCRCU.
+Ansible playbooks.
